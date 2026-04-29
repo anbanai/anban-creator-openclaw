@@ -32,7 +32,7 @@ user-invocable: true
 
 ### 第六步：图片生成服务（可选）
 
-可选值：`gemini`、`openai`、`openrouter`、`volcengine`
+可选值：`gemini`、`openai`、`volcengine`
 
 ## 查看账号信息
 
