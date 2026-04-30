@@ -30,7 +30,7 @@ user-invocable: true
 
 ### 步骤 2：创建工作目录
 
-调用 `prepare_workspace(content_type="articles")` MCP 工具创建隔离工作目录（自动归档残留文件，确保目录为空），后续所有产物保存在返回的路径内，变量记为 `$DIR`。
+调用 `prepare_workspace(content_type="articles")` MCP 工具获取工作目录路径，变量记为 `$DIR`，然后通过 Bash 执行 `mkdir -p "$DIR"` 创建目录。
 
 ### 步骤 3：选题研究
 
@@ -98,9 +98,10 @@ using the article-publishing skill 把文章发布到草稿箱。产出：
 
 ## MCP 工具使用规则
 
-- **必须使用 MCP 工具调用服务端接口**（如 `list_channels`、`prepare_workspace`、`generate_image` 等）
+- **必须使用 MCP 工具调用服务端接口**（如 `list_channels`、`generate_image` 等）
 - **禁止编写 JavaScript/Node.js/Python 脚本或创建自定义 HTTP 客户端来调用 MCP 接口**
 - **如果 MCP 工具不可用或调用失败，立即停止并报告错误**，不要尝试自行发现、探测或创建替代连接方式
+- **`prepare_workspace` / `archive_workspace` 仅返回路径，目录创建和文件移动由 agent 本地执行**
 
 ## 质量标准
 
