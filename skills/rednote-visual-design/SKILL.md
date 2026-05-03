@@ -10,7 +10,7 @@ user-invocable: false
 
 | MCP 工具 | 说明 |
 |----------|------|
-| `generate_image` (channel_id, prompt, image_type="cover", output_path) | 生成封面（单张） |
+| `generate_image` (channel_id, prompt, image_type, output_path, ref_image_path) | 生成单张图片 |
 | `upload_image` (channel_id, file_path) | 上传图片到微信素材库 |
 
 ---
