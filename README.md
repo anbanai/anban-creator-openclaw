@@ -141,9 +141,7 @@ npm run lint     # 类型检查
 │   ├── lib.ts              # 共享工具
 │   ├── commands/           # 命令注册
 │   └── hooks/              # 质量检查钩子
-├── skills/                 # 专业技能（18 个 SKILL.md）
-├── themes/                 # 排版主题 (YAML)
-├── writers/                # 写作风格 (YAML)
+├── skills/                 # 专业技能（SKILL.md）
 ├── package.json
 └── tsconfig.json
 ```

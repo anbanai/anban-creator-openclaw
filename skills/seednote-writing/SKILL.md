@@ -1,10 +1,10 @@
 ---
-name: rednote-writing
-description: Writes and optimizes Xiaohongshu (小红书) content including titles and viral note rewrites. Use when writing Xiaohongshu (小红书) content, optimizing rednote titles, or rewriting viral notes.
+name: seednote-writing
+description: Writes and optimizes Seednote (种草笔记) content including titles and viral note rewrites. Use when writing Seednote (种草笔记) content, optimizing seednote titles, or rewriting viral notes.
 user-invocable: false
 ---
 
-# 小红书内容写作知识库
+# 种草笔记内容写作知识库
 
 ## 1. 标题规范
 
@@ -46,7 +46,7 @@ title_score = 情绪强度(0-3) + 关键词密度(0-1) + 字数优化(0-1) + 句
 
 ## 2.5 正文格式（关键 Gotcha）
 
-**平台陷阱**：小红书不渲染 Markdown。`**粗体**` 在用户手机屏幕上就是 `**粗体**` 四个字符，`---` 就是三个横杠。这是平台硬限制，不是风格偏好。
+**平台陷阱**：种草笔记不渲染 Markdown。`**粗体**` 在用户手机屏幕上就是 `**粗体**` 四个字符，`---` 就是三个横杠。这是平台硬限制，不是风格偏好。
 
 发布到平台的正文必须是**纯文本 + emoji + 符号**。内部文档（topic-analysis.md、source-analysis.md、image-plan.md）不发布，可用 Markdown。
 
@@ -105,7 +105,7 @@ Lightroom ✅ 专业全面 / 适合 raw 格式 / 稍重
 
 ### Markdown → Emoji 替换映射表
 
-生成内容时直接使用 emoji + 纯文本，不要使用 Markdown 语法。以下映射表帮助将 Markdown 思维转换为小红书原生格式：
+生成内容时直接使用 emoji + 纯文本，不要使用 Markdown 语法。以下映射表帮助将 Markdown 思维转换为种草笔记原生格式：
 
 **基础映射**：
 
@@ -162,7 +162,7 @@ Lightroom ✅ 专业全面 / 适合 raw 格式 / 稍重
 
 ## 2.6 字数压缩（强制步骤）
 
-**平台限制**：小红书正文限制 ≤1000 字（含 emoji 和空格）。超过无法发布。
+**平台限制**：种草笔记正文限制 ≤1000 字（含 emoji 和空格）。超过无法发布。
 
 **压缩流程**（仅在字数 >1000 时触发）：
 
@@ -210,7 +210,7 @@ Lightroom ✅ 专业全面 / 适合 raw 格式 / 稍重
 
 - **对话式第一人称**：像跟朋友聊天，用"我"和"你/集美/姐妹"，拉近距离
 - **沉浸式场景开头**：感官细节或微故事开场（"上周去咖啡馆，无意间发现..."），不要抽象陈述（禁止"本文将介绍..."）
-- **平台原生表达**：自然使用小红书惯用语（"针不戳"、"绝了"、"已上车"），不堆砌，不刻意
+- **平台原生表达**：自然使用种草笔记惯用语（"针不戳"、"绝了"、"已上车"），不堆砌，不刻意
 
 **反面模式（禁止）**：
 - 论文腔："本文旨在探讨..."、"综上所述..."
@@ -336,3 +336,26 @@ Lightroom ✅ 专业全面 / 适合 raw 格式 / 稍重
 - **低风险词**：自动替换或删除
 
 生成 `$DIR/compliance-report.md` 记录所有修改。
+
+### 9.6 模板持久化
+
+复刻完成后，将提取的 5 维模板保存到系统模板库：
+
+调用 MCP 工具 `save_template`，参数：
+- `type`: "seednote"
+- `name`: 基于源笔记主题生成简短模板名（如"美妆种草测评模板"）
+- `category`: 从源笔记所属行业推断
+- `structure`: JSON 对象，包含提取的 5 维模板信息：
+  ```json
+  {
+    "title_template": "...",
+    "cover_template": "...",
+    "body_template": "...",
+    "interaction_template": "...",
+    "tag_template": "..."
+  }
+  ```
+- `style_prompt`: 从源笔记的视觉风格中提炼的提示词
+- `tags`: 基于行业和内容类型的标签数组
+
+注意：如果 `save_template` 调用失败，记录到 `$DIR/compliance-report.md` 但不阻塞流程。

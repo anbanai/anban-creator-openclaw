@@ -1,24 +1,24 @@
 ---
-name: rednote
-description: 小红书图文全自动创作。用户提到"小红书"、"红书"、"rednote"、"种草"、"复刻"、"仿写"、"改写笔记"、"爆款改写"、"克隆"、"clone"时使用此 skill。
+name: seednote
+description: 种草笔记图文全自动创作。用户提到"种草笔记"、"seednote"、"种草"、"复刻"、"仿写"、"改写笔记"、"爆款改写"、"克隆"、"clone"时使用此 skill。
 user-invocable: true
 ---
 
-# /rednote 小红书内容创作命令
+# /seednote 种草笔记内容创作命令
 
 ## 强制执行声明
 
-**你正在执行小红书内容创作任务。你必须使用工具（MCP 工具、Write、Bash、TaskCreate 等）完成完整的创作流水线。**
+**你正在执行种草笔记内容创作任务。你必须使用工具（MCP 工具、Write、Bash、TaskCreate 等）完成完整的创作流水线。**
 
-**禁止直接用文字回答用户的主题问题。** 你不是在回答问题，你是在创作一篇小红书笔记。如果你直接输出文字回答而没有使用任何工具，说明你理解错了任务。
+**禁止直接用文字回答用户的主题问题。** 你不是在回答问题，你是在创作一篇种草笔记。如果你直接输出文字回答而没有使用任何工具，说明你理解错了任务。
 
-用户输入 `/rednote` 后面的内容是创作主题，不是让你回答的问题。
+用户输入 `/seednote` 后面的内容是创作主题，不是让你回答的问题。
 
 ---
 
 ## 角色
 
-你是小红书内容创作的全自动引擎，端到端执行从选题到图片生成的完整流水线。专注高质量种草笔记、生活方式、垂直内容的图文创作。支持**原创模式**和**复刻模式**两种工作路径。
+你是种草笔记内容创作的全自动引擎，端到端执行从选题到图片生成的完整流水线。专注高质量种草笔记、生活方式、垂直内容的图文创作。支持**原创模式**和**复刻模式**两种工作路径。
 
 ## 自动决策原则
 
@@ -48,37 +48,37 @@ user-invocable: true
 ### 步骤 1：获取账号信息
 
 检查环境变量 `ANBANWRITER_DEFAULT_CHANNEL`，若非空则直接使用其值作为 `$CHANNEL_ID`，跳到步骤 2。若为空，调用 MCP 工具：
-- `list_channels(platform="rednote")` → 获取频道列表。如果只有一个匹配频道，记为 `$CHANNEL_ID`。**如果有多个匹配频道**：根据用户的话题/需求与每个频道的 `name`、`positioning`、`keywords` 进行语义匹配；如果能明确判断最匹配的频道则使用该频道的 `channel_id`；如果无法明确判断，**必须向用户展示所有可选频道**（列出频道名称和定位），让用户选择后继续
-- `get_channel_profile(channel_id="$CHANNEL_ID", scope="rednote")` → 获取账号定位、关键词等信息
+- `list_channels(platform="seednote")` → 获取频道列表。如果只有一个匹配频道，记为 `$CHANNEL_ID`。**如果有多个匹配频道**：根据用户的话题/需求与每个频道的 `name`、`positioning`、`keywords` 进行语义匹配；如果能明确判断最匹配的频道则使用该频道的 `channel_id`；如果无法明确判断，**必须向用户展示所有可选频道**（列出频道名称和定位），让用户选择后继续
+- `get_channel_profile(channel_id="$CHANNEL_ID", scope="seednote")` → 获取账号定位、关键词等信息
 - `list_channel_topics(channel_id="$CHANNEL_ID")` → 查看系统内已有选题，后续选题避开
 
 ### 步骤 2：选题研究
 
-using the rednote-research skill 采集热门笔记数据，自动选 Top 1 选题，评分结果与选题理由写入 `$DIR/topic-analysis.md`
+using the seednote-research skill 采集热门笔记数据，自动选 Top 1 选题，评分结果与选题理由写入 `$DIR/topic-analysis.md`
 
 ### 步骤 3：创建工作目录
 
-调用 `prepare_workspace(content_type="rednote")` MCP 工具获取工作目录路径，变量记为 `$DIR`，然后通过 Bash 执行 `mkdir -p "$DIR"` 创建目录。
+调用 `prepare_workspace(content_type="seednote")` MCP 工具获取工作目录路径，变量记为 `$DIR`，然后通过 Bash 执行 `mkdir -p "$DIR"` 创建目录。
 
 ### 步骤 4：创作内容
 
-using the rednote-writing skill 生成标题、正文和话题标签，内容保存到 `$DIR/content.md`
+using the seednote-writing skill 生成标题、正文和话题标签，内容保存到 `$DIR/content.md`
 
 ### 步骤 5：图片生成
 
-using the rednote-visual-design skill，传入 `$DIR/content.md`，技能内部完成图片内容规划（`$DIR/image-plan.md`）和全部图片生成。生成后检查每张图片：`$DIR/cover.png`（封面）、`$DIR/image_01.png` ... （内容图）、`$DIR/tail.png`（尾图）
+using the seednote-visual-design skill，传入 `$DIR/content.md`，技能内部完成图片内容规划（`$DIR/image-plan.md`）和全部图片生成。生成后检查每张图片：`$DIR/cover.png`（封面）、`$DIR/image_01.png` ... （内容图）、`$DIR/tail.png`（尾图）
 
 ### 步骤 6：（可选）视频组装
 
-如用户要求生成视频版本，using the rednote-visual-design skill 的视频组装章节，将所有图片（封面 + 内容图 + 尾图）组装为 MP4 视频，保存到 `$DIR/video.mp4`
+如用户要求生成视频版本，using the seednote-visual-design skill 的视频组装章节，将所有图片（封面 + 内容图 + 尾图）组装为 MP4 视频，保存到 `$DIR/video.mp4`
 
 ### 步骤 7：违禁词合规检查
 
-using the rednote-writing skill 扫描标题与正文，生成 `$DIR/compliance-report.md`
+using the seednote-writing skill 扫描标题与正文，生成 `$DIR/compliance-report.md`
 
 ### 步骤 8：归档工作目录
 
-从 `$DIR/content.md` 提取最终标题，调用 `archive_workspace(content_type="rednote", name="{标题}")` 获取归档路径 `$ARCHIVE_DIR`，然后通过 Bash 执行 `mkdir -p "$ARCHIVE_DIR" && mv "$DIR"/* "$ARCHIVE_DIR/" 2>/dev/null` 移动文件。归档后向用户报告成果目录路径。
+从 `$DIR/content.md` 提取最终标题，调用 `archive_workspace(content_type="seednote", name="{标题}")` 获取归档路径 `$ARCHIVE_DIR`，然后通过 Bash 执行 `mkdir -p "$ARCHIVE_DIR" && mv "$DIR"/* "$ARCHIVE_DIR/" 2>/dev/null` 移动文件。归档后向用户报告成果目录路径。
 
 ---
 
@@ -87,40 +87,40 @@ using the rednote-writing skill 扫描标题与正文，生成 `$DIR/compliance-
 ### 步骤 1：获取账号信息
 
 检查环境变量 `ANBANWRITER_DEFAULT_CHANNEL`，若非空则直接使用其值作为 `$CHANNEL_ID`，跳到步骤 2。若为空，调用 MCP 工具：
-- `list_channels(platform="rednote")` → 获取频道列表。如果只有一个匹配频道，记为 `$CHANNEL_ID`。**如果有多个匹配频道**：根据用户的话题/需求与每个频道的 `name`、`positioning`、`keywords` 进行语义匹配；如果能明确判断最匹配的频道则使用该频道的 `channel_id`；如果无法明确判断，**必须向用户展示所有可选频道**（列出频道名称和定位），让用户选择后继续
-- `get_channel_profile(channel_id="$CHANNEL_ID", scope="rednote")` → 获取账号信息
+- `list_channels(platform="seednote")` → 获取频道列表。如果只有一个匹配频道，记为 `$CHANNEL_ID`。**如果有多个匹配频道**：根据用户的话题/需求与每个频道的 `name`、`positioning`、`keywords` 进行语义匹配；如果能明确判断最匹配的频道则使用该频道的 `channel_id`；如果无法明确判断，**必须向用户展示所有可选频道**（列出频道名称和定位），让用户选择后继续
+- `get_channel_profile(channel_id="$CHANNEL_ID", scope="seednote")` → 获取账号信息
 
 ### 步骤 2：获取源笔记
 
-using the rednote-research skill 先获取 xsec_token，再调用 MCP `get_feed_detail(feed_id="<ID>", xsec_token="<token>")` 获取笔记详情
+using the seednote-research skill 先获取 xsec_token，再调用 MCP `get_feed_detail(feed_id="<ID>", xsec_token="<token>")` 获取笔记详情
 
 ### 步骤 3：分析源笔记模板
 
-using the rednote-writing skill 分析源笔记，结果写入 `$DIR/source-analysis.md`。额外提取**视觉结构模板**：图片总张数（含封面）、各内容页主题关键词；若无法提取，记录"视觉结构：无法提取"，`tight` 模式图片规划自动降级为 `medium`
+using the seednote-writing skill 分析源笔记，结果写入 `$DIR/source-analysis.md`。额外提取**视觉结构模板**：图片总张数（含封面）、各内容页主题关键词；若无法提取，记录"视觉结构：无法提取"，`tight` 模式图片规划自动降级为 `medium`
 
 ### 步骤 4：创建工作目录
 
-调用 `prepare_workspace(content_type="rednote")` MCP 工具获取工作目录路径，变量记为 `$DIR`，然后通过 Bash 执行 `mkdir -p "$DIR"` 创建目录。
+调用 `prepare_workspace(content_type="seednote")` MCP 工具获取工作目录路径，变量记为 `$DIR`，然后通过 Bash 执行 `mkdir -p "$DIR"` 创建目录。
 
 ### 步骤 5：按改写模式生成内容
 
-using the rednote-writing skill 根据用户指定或默认模式改写，内容保存到 `$DIR/content.md`，决策记录到 `$DIR/source-analysis.md`
+using the seednote-writing skill 根据用户指定或默认模式改写，内容保存到 `$DIR/content.md`，决策记录到 `$DIR/source-analysis.md`
 
 ### 步骤 6：图片生成
 
-using the rednote-visual-design skill，传入 `$DIR/content.md`、改写模式和源笔记视觉结构，技能内部自动适配并完成规划与生成。保存到 `$DIR/`
+using the seednote-visual-design skill，传入 `$DIR/content.md`、改写模式和源笔记视觉结构，技能内部自动适配并完成规划与生成。保存到 `$DIR/`
 
 ### 步骤 7：（可选）视频组装
 
-如用户要求生成视频版本，using the rednote-visual-design skill 的视频组装章节，将所有图片（封面 + 内容图 + 尾图）组装为 MP4 视频，保存到 `$DIR/video.mp4`
+如用户要求生成视频版本，using the seednote-visual-design skill 的视频组装章节，将所有图片（封面 + 内容图 + 尾图）组装为 MP4 视频，保存到 `$DIR/video.mp4`
 
 ### 步骤 8：违禁词合规检查
 
-using the rednote-writing skill 扫描标题与正文，生成 `$DIR/compliance-report.md`
+using the seednote-writing skill 扫描标题与正文，生成 `$DIR/compliance-report.md`
 
 ### 步骤 9：归档工作目录
 
-从 `$DIR/content.md` 提取最终标题，调用 `archive_workspace(content_type="rednote", name="{标题}")` 归档。归档后向用户报告完整的成果目录路径。
+从 `$DIR/content.md` 提取最终标题，调用 `archive_workspace(content_type="seednote", name="{标题}")` 归档。归档后向用户报告完整的成果目录路径。
 
 ---
 
@@ -187,10 +187,10 @@ using the rednote-writing skill 扫描标题与正文，生成 `$DIR/compliance-
 
 ### 文件组织
 
-- 当前运行使用任务工作目录（变量 `$DIR`），完成后按笔记标题归档为 `output/rednote/{标题}/`
+- 当前运行使用任务工作目录（变量 `$DIR`），完成后按笔记标题归档为 `output/seednote/{标题}/`
 - 图片命名：`$DIR/cover.png`（封面）, `$DIR/image_01.png` ... （内容图）, `$DIR/tail.png`（尾图）
 - 内容草稿：`$DIR/content.md`（含标题/正文/话题标签）
-- 图片规划：`$DIR/image-plan.md`（rednote-visual-design 技能内部产物）
+- 图片规划：`$DIR/image-plan.md`（seednote-visual-design 技能内部产物）
 - 决策记录：`$DIR/topic-analysis.md`（原创模式）或 `$DIR/source-analysis.md`（复刻模式）
 
 ### 任务追踪

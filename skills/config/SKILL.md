@@ -20,11 +20,11 @@ user-invocable: true
 
 ### 第三步：写作风格
 
-可选值：`dan-koe`（简洁有力）、`cultural-depth`（文化深度）、`casual-science`（轻松科普）
+在频道配置中填写写作风格描述，或选择后台提供的服务端写作资源。插件目录不再携带本地 writer YAML。
 
 ### 第四步：文章主题
 
-可选值：`default`、`apple`、`autumn-warm`、`spring-fresh`、`ocean-calm`
+在频道配置中选择后台提供的主题资源，或保留默认主题。插件目录不再携带本地 theme YAML。
 
 ### 第五步：AI API 配置（可选）
 

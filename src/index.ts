@@ -6,7 +6,7 @@ export default {
   id: "anbanwriter",
   name: "案板创作助手",
   description:
-    "WeChat & Xiaohongshu AI content creation suite — writing, visual design, multi-platform publishing",
+    "WeChat & Seednote AI content creation suite — writing, visual design, multi-platform publishing",
   configSchema: emptyPluginConfigSchema(),
 
   register(api: OpenClawPluginApi) {

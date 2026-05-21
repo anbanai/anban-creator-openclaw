@@ -19,15 +19,14 @@ user-invocable: false
 
 ## 封面图生成
 
-封面图使用 writer YAML 中的 `cover_prompt` 模板。流程：
+封面图使用频道配置和服务端图片资源生成。流程：
 
-1. 读取对应的 writer YAML 文件（`writers/{style_name}.yaml`）
-2. 将文章内容注入 `{article_content}` 占位符
-3. 封面 prompt 会自动分析文章 → 提炼主题 → 设计视觉隐喻 → 输出结构化提示词
-4. 调用 `generate_image(image_type="cover", output_path="$DIR/cover.png")` 生成
-5. 调用 `upload_image(file_path="$DIR/cover.png")` 上传，获取 `media_id`
+1. 基于频道定位、写作风格和文章内容提炼封面主题
+2. 结合服务端图片预设生成结构化提示词
+3. 调用 `generate_image(image_type="cover", output_path="$DIR/cover.png")` 生成
+4. 调用 `upload_image(file_path="$DIR/cover.png")` 上传，获取 `media_id`
 
-**封面视觉风格记录**：从 writer YAML 的 `cover_style` 和 `cover_mood` 字段提取，作为章节配图的风格基准。
+**封面视觉风格记录**：从实际生成结果和频道风格中提取，作为章节配图的风格基准。
 
 ---
 

@@ -1,10 +1,10 @@
 ---
-name: rednote-research
-description: Analyzes Xiaohongshu (小红书) topics and scores engagement potential. Use when analyzing Xiaohongshu (小红书) topics, scoring engagement, or researching trending rednote content.
+name: seednote-research
+description: Analyzes Seednote (种草笔记) topics and scores engagement potential. Use when analyzing Seednote (种草笔记) topics, scoring engagement, or researching trending seednote content.
 user-invocable: false
 ---
 
-# 小红书选题研究知识库
+# 种草笔记选题研究知识库
 
 ## 选题前必做：查看已有选题
 

@@ -18,11 +18,7 @@ user-invocable: false
 
 ## 写作风格
 
-内置风格定义文件位于 `writers/` 目录：
-
-- [dan-koe.yaml](../../writers/dan-koe.yaml) - 简洁有力、直击要点、哲理深度
-- [cultural-depth.yaml](../../writers/cultural-depth.yaml) - 文化底蕴、文学修辞、深度思考
-- [casual-science.yaml](../../writers/casual-science.yaml) - 通俗易懂、生动有趣、科学严谨
+写作风格由频道配置和服务端资源自动应用。调用 `write_article` 时传入频道和主题即可，不需要在插件目录读取本地 writer YAML 文件。
 
 ## 质量标准
 
