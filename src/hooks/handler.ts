@@ -1,4 +1,6 @@
 import type { OpenClawPluginApi } from "openclaw/plugin-sdk";
+import { existsSync, readdirSync } from "node:fs";
+import { join } from "node:path";
 
 /**
  * Register quality verification and delivery summary hooks for anbanwriter.
@@ -106,6 +108,37 @@ function summarizeSeednoteDelivery(
   output: any,
   archivePath: string
 ): string {
+  // Best-effort artifact gate: OpenClaw after_tool_call is post-execution and cannot block,
+  // so we can only warn. This mirrors the claudecode/hooks/seednote-quality-gate.sh checks
+  // but as a soft warning rather than a hard block.
+  const requiredArtifacts = [
+    "image-plan.md",
+    "image-prompts.md",
+    "image-review.md",
+  ];
+  const missingArtifacts = requiredArtifacts.filter(
+    (name) => !hasFile(archivePath, name)
+  );
+  const imageCount = countImages(archivePath);
+  if (imageCount < 3) {
+    missingArtifacts.push(
+      `图片数量（当前 ${imageCount} 张，应 ≥3：cover + 内容图 + tail）`
+    );
+  }
+
+  const warningBlock =
+    missingArtifacts.length > 0
+      ? [
+        ``,
+        `[GATE-WARN] 机械闸门警告（OpenClaw 无法 block，请人工确认）：`,
+        ...missingArtifacts.map((m) => `  - 缺失 ${m}`),
+        ``,
+        `这些产物缺失通常意味着 seednote-visual-design skill 流程被绕过，`,
+        `图片可能没有按规范生成中文文字。建议人工检查后重跑。`,
+        ``,
+      ]
+      : [];
+
   const lines = [
     `**种草笔记创作完成**`,
     `- 归档路径：${archivePath}`,
@@ -125,9 +158,25 @@ function summarizeSeednoteDelivery(
     `- 所有图片视觉风格是否一致`,
     `- content.md 是否包含话题标签`,
     `- 封面图是否清晰、无马赛克`,
+    ...warningBlock,
   ];
 
   return lines.join("\n");
+}
+
+// Best-effort file checks for the seednote artifact gate.
+// existsSync/readdirSync only throw on permission errors or invalid args;
+// missing files return false / empty array. We deliberately don't catch —
+// if the plugin host lacks fs access, the warning is the least of our problems.
+function hasFile(dir: string, name: string): boolean {
+  return existsSync(join(dir, name));
+}
+
+function countImages(dir: string): number {
+  if (!existsSync(dir)) return 0;
+  const entries = readdirSync(dir);
+  const matchers = [/^cover\.png$/i, /^tail\.png$/i, /^image_.*\.png$/i];
+  return entries.filter((n: string) => matchers.some((re) => re.test(n))).length;
 }
 
 function summarizeGenericDelivery(
