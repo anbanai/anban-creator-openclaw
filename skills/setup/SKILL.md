@@ -1,10 +1,10 @@
 ---
-name: init
-description: Use when user mentions "初始化", "init", "配置", "设置", "setup", "第一次使用", "API Key", "密钥", or when MCP tools fail with auth/connection errors suggesting missing ANBANWRITER_API_KEY.
+name: setup
+description: Use when user mentions "初始化", "setup", "第一次使用", "API Key", "密钥", or when MCP tools fail with auth/connection errors suggesting missing ANBANWRITER_API_KEY.
 user-invocable: true
 ---
 
-# /init anbanwriter 初始化
+# /setup anbanwriter 初始化
 
 ## 预检
 
@@ -61,4 +61,4 @@ export ANBANWRITER_DEFAULT_CHANNEL="<频道 ID>"
 
 告知用户：
 
-> 配置完成。**请退出并重新启动 OpenClaw**，让 MCP 连接生效。重启后再次运行 `/init` 验证连接。
+> 配置完成。**请退出并重新启动 OpenClaw**，让 MCP 连接生效。重启后再次运行 `/setup` 验证连接。
