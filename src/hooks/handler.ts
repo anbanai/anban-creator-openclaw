@@ -120,8 +120,8 @@ function summarizeSeednoteDelivery(
     (name) => !hasFile(archivePath, name)
   );
   // Image count: compare against image-plan.md 「计划图片数量: N 张」(written by
-  // skill step 3, driven by user prompt). If the field is missing, treat that as
-  // a skill step-3 skip rather than guessing a default.
+  // skill step 3). Content image count is adaptive (0~3); the field records the
+  // agent-decided total. If missing, treat as a skill step-3 skip.
   const imageCount = countImages(archivePath);
   if (hasFile(archivePath, "image-plan.md")) {
     const expected = expectedImageCount(archivePath);
@@ -136,6 +136,12 @@ function summarizeSeednoteDelivery(
     }
     if (!hasFile(archivePath, "cover.png")) {
       missingArtifacts.push(`cover.png（封面必选）`);
+    }
+    const contentCount = countContentImages(archivePath);
+    if (contentCount > 3) {
+      missingArtifacts.push(
+        `内容图超过 3 张上限（当前 ${contentCount} 张，应 ≤3）`
+      );
     }
   }
 
@@ -167,7 +173,7 @@ function summarizeSeednoteDelivery(
     "- `compliance-report.md` — 违禁词合规检查",
     ``,
     `质量检查要点：`,
-    `- 图片数量是否等于 image-plan.md 「计划图片数量」声明值`,
+    `- 图片数量是否等于 image-plan.md 「计划图片数量」声明值，内容图是否 ≤ 3 张`,
     `- 所有图片视觉风格是否一致`,
     `- content.md 是否包含话题标签`,
     `- 封面图是否清晰、无马赛克`,
@@ -192,9 +198,18 @@ function countImages(dir: string): number {
   return entries.filter((n: string) => matchers.some((re) => re.test(n))).length;
 }
 
-// Parse 「计划图片数量: N 张」from image-plan.md (written by skill step 3, driven
-// by user prompt directive). Four valid values 1/2/3 map to cover / cover+content /
-// cover+tail / cover+content+tail. Returns undefined when the field is missing.
+// Count content images only (image_*.png), excluding cover.png and tail.png.
+// Used to enforce the content-image upper cap of 3 (content count is adaptive
+// 1~3); the lower bound is covered by the expected==imageCount check above.
+function countContentImages(dir: string): number {
+  if (!existsSync(dir)) return 0;
+  return readdirSync(dir).filter((n: string) => /^image_.*\.png$/i.test(n))
+    .length;
+}
+
+// Parse 「计划图片数量: N 张」from image-plan.md (written by skill step 3). Content
+// image count is adaptive (0~3); total ranges 1~5. Returns undefined when the field
+// is missing.
 function expectedImageCount(dir: string): number | undefined {
   const planPath = join(dir, "image-plan.md");
   if (!existsSync(planPath)) return undefined;
