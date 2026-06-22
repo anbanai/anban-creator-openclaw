@@ -10,8 +10,8 @@ user-invocable: false
 
 | MCP 工具 | 说明 |
 |----------|------|
-| `generate_image` (channel_id, prompt, image_type, output_path, task_id) | 生成单张图片，返回 download_url 和 file_path |
-| `upload_image` (channel_id, file_path) | 上传图片到微信 CDN，返回 CDN URL |
+| `generate_image` (channel_id, prompt, image_type, output_path, task_id, upload_to_cdn?) | 生成单张图片，返回 download_url 和 file_path。`upload_to_cdn=true`（**生成与上传原子化**）时在同一调用内完成"生成→保存→压缩→上传微信 CDN"，直接返回 `wechat_url` + `media_id`；上传失败返回 `upload_error`（生成不浪费，仅重试上传） |
+| `upload_image` (channel_id, file_path) | 上传**外部/下载来的**图片到微信 CDN，返回 CDN URL。**已生成的图不再用此工具**——生成时直接用 `generate_image(upload_to_cdn=true)` 原子上传；仅作为生成时返回 `upload_error` 的重传兜底 |
 | `download_image` (channel_id, url) | 下载在线图片 |
 | `compress_image` (file_path) | 压缩图片 |
 
@@ -23,8 +23,8 @@ user-invocable: false
 
 1. 基于频道定位、写作风格和文章内容提炼封面主题
 2. 结合服务端图片预设生成结构化提示词
-3. 调用 `generate_image(image_type="cover", output_path="$DIR/cover.png")` 生成
-4. 调用 `upload_image(file_path="$DIR/cover.png")` 上传，获取 `media_id`
+3. 调用 `generate_image(image_type="cover", output_path="$DIR/cover.png", upload_to_cdn=true)`——**生成与上传原子化**：同一调用内完成生成→保存→压缩→上传微信 CDN，直接返回 `wechat_url` + `media_id`（封面 thumb）
+4. 从 `generate_image` 返回值取 `media_id`（用于发布草稿的 thumb）+ `wechat_url`。**无需单独调用 `upload_image`**。若返回 `upload_error`（生成成功但上传失败），用 `upload_image(file_path="$DIR/cover.png")` 单独重传即可，**无需重新生成**
 
 **封面视觉风格记录**：从实际生成结果和频道风格中提取，作为章节配图的风格基准。
 
@@ -78,11 +78,11 @@ user-invocable: false
 - 避免抽象通用描述（如"商务场景"、"科技背景"）
 - 不同章节的提示词必须有明显区别
 
-**2c. 生成并上传**
+**2c. 生成并上传（原子化）**
 
-1. 调用 `generate_image`（`channel_id`, `prompt`, `image_type="content"`, `output_path="$DIR/img_N.png"`, `task_id`）
-2. 调用 `upload_image`（`channel_id`, `file_path="$DIR/img_N.png"`）→ 获取 CDN URL
-3. 将 `![描述](CDN_URL)` 插入到章节关键段落之后（不紧跟 `##` 标题，不在章节末尾）
+1. 调用 `generate_image`（`channel_id`, `prompt`, `image_type="content"`, `output_path="$DIR/img_N.png"`, `task_id`, **`upload_to_cdn=true`**）——**生成与上传原子化**：同一调用内完成生成→保存→压缩→上传微信 CDN，返回值直接带 `wechat_url` + `media_id`。**不再有独立的 `upload_image` 阶段**。若返回 `upload_error`（生成成功但上传失败），用 `upload_image(file_path="$DIR/img_N.png")` 单独重传即可，**无需重新生成**
+2. **每张图返回后立即原子写 `images.json`**：先写临时文件 `$DIR/.images.json.tmp` → `fsync` → `rename` 覆盖 `$DIR/images.json`。绝不要"攒齐所有图再一次性写"——每张图返回即落盘，使中断最多丢失"正在生成的那一张"，已上 CDN 的全部安全
+3. 从 `generate_image` 返回值取 `wechat_url`（即 CDN URL），将 `![描述](wechat_url)` 插入到章节关键段落之后（不紧跟 `##` 标题，不在章节末尾）
 
 **示例**（假设章节讨论"拖延的本质是自我保护"，风格为维多利亚版画）：
 
@@ -93,7 +93,7 @@ Victorian woodcut etching style, black and white with cross-hatching. A figure s
 #### 步骤 3：保存结果
 
 - 将含 CDN 图片链接的文章覆盖写回 `$DIR/04-article-final.md`
-- 将所有配图信息保存为 `$DIR/images.json`（含 index, prompt, file_path, url）
+- 将所有配图信息保存为 `$DIR/images.json`（含 index, prompt, file_path, url, **wechat_url**, **media_id**）。每张图生成返回后即原子落盘（见 2c），不复述
 
 ---
 

@@ -60,8 +60,8 @@ user-invocable: false
 ## 完整发布工作流
 
 1. 调用 `convert_markdown` 将 Markdown 转为 WeChat HTML
-2. 调用 `generate_image` 生成封面图到本地
-3. 调用 `upload_image` 上传封面图到微信素材库，记录返回的 media_id
+2. 调用 `generate_image(upload_to_cdn=true)` 生成封面图——**生成与上传原子化**：同一调用内完成生成→压缩→上传微信 CDN，直接返回 `media_id` + `wechat_url`，**无需单独 `upload_image`**。**流水线场景**：article 流水线步骤 6 已取得封面 `media_id`（`generate_image(upload_to_cdn=true)` 原子上传返回），直接复用即可，跳过本步
+3. （仅当上一步返回 `upload_error` 时）调用 `upload_image(file_path="$DIR/cover.png")` 单独重传获取 `media_id`，不重新生成
 4. 调用 `publish_draft` 创建草稿
 
 ## 注意事项
