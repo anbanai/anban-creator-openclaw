@@ -10,7 +10,7 @@ user-invocable: false
 
 | MCP 工具 | 说明 |
 |----------|------|
-| `generate_image` (channel_id, prompt, image_type, output_path, task_id, upload_to_cdn?) | 生成单张图片，返回 download_url 和 file_path。`upload_to_cdn=true`（**生成与上传原子化**）时在同一调用内完成"生成→保存→压缩→上传微信 CDN"，直接返回 `wechat_url` + `media_id`；上传失败返回 `upload_error`（生成不浪费，仅重试上传） |
+| `generate_image` (channel_id, prompt, image_type, output_path, task_id, upload_to_cdn?) | 生成单张图片，返回 download_url（始终为可 HTTP fetch 的存储 URL，不再返回 base64 data URL）和 file_path。`upload_to_cdn=true`（**生成与上传原子化**）时在同一调用内完成"生成→保存→压缩→上传微信 CDN"，直接返回 `wechat_url` + `media_id`；上传失败返回 `upload_error`（生成不浪费，仅重试上传） |
 | `upload_image` (channel_id, file_path) | 上传**外部/下载来的**图片到微信 CDN，返回 CDN URL。**已生成的图不再用此工具**——生成时直接用 `generate_image(upload_to_cdn=true)` 原子上传；仅作为生成时返回 `upload_error` 的重传兜底 |
 | `download_image` (channel_id, url) | 下载在线图片 |
 | `compress_image` (file_path) | 压缩图片 |
