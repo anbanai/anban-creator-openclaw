@@ -19,14 +19,14 @@ user-invocable: false
 
 ## 封面图生成
 
-封面图使用频道配置和服务端图片资源生成。流程：
+封面图使用任务解析的视觉风格（`get_channel_profile` 的 `style`/`style_source`/`template_style`）和服务端图片资源生成。流程：
 
-1. 基于频道定位、写作风格和文章内容提炼封面主题
+1. **优先读取任务已解析的视觉风格** `$VISUAL_STYLE_CONFIGURED`（`style` 字段）。若为空，再基于频道定位 + 内容主题 + 受众兜底分析封面视觉方向——**不从 writer YAML 推视觉**（writer 仅决定文字风格）
 2. 结合服务端图片预设生成结构化提示词
 3. 调用 `generate_image(image_type="cover", output_path="$DIR/cover.png", upload_to_cdn=true)`——**生成与上传原子化**：同一调用内完成生成→保存→压缩→上传微信 CDN，直接返回 `wechat_url` + `media_id`（封面 thumb）
 4. 从 `generate_image` 返回值取 `media_id`（用于发布草稿的 thumb）+ `wechat_url`。**无需单独调用 `upload_image`**。若返回 `upload_error`（生成成功但上传失败），用 `upload_image(file_path="$DIR/cover.png")` 单独重传即可，**无需重新生成**
 
-**封面视觉风格记录**：从实际生成结果和频道风格中提取，作为章节配图的风格基准。
+**封面视觉风格记录**：若 `$VISUAL_STYLE_CONFIGURED` 为空，则从实际生成结果中提取 `$COVER_STYLE`，作为章节配图的兜底风格基准；若 `$VISUAL_STYLE_CONFIGURED` 非空，封面生成须向该锚点收敛，配图风格前缀以 `$VISUAL_STYLE_CONFIGURED` 为准。
 
 ---
 
@@ -45,15 +45,23 @@ user-invocable: false
 
 对文章中每个 `##` 章节，按以下步骤执行：
 
-#### 步骤 1：确定统一风格前缀
+#### 步骤 1：确定统一风格前缀（视觉来源：任务解析的 `style` 字段）
 
-基于封面视觉风格（`$COVER_STYLE`），确定适用于所有配图的风格前缀：
+公众号模板由三个**正交**维度组成：图片视觉（`style`）、写作风格（`writing_style`）、排版样式（`theme`）。三者各自独立解析，互不推导——**写作风格绝不决定图片视觉**。
+
+视觉风格**优先**取自 `get_channel_profile` 返回的任务已解析字段（按 `task > template > plan > channel` 解析）：
+- `$VISUAL_STYLE_CONFIGURED` = profile 的 `style` 字段（解析后的视觉风格描述/关键词）
+- `$TEMPLATE_VISUAL_STYLE` = profile 的 `template_style` 字段（任务带模板时）
+- `$VISUAL_STYLE_SOURCE` = profile 的 `style_source`（task / template / plan / channel）
+
+**关键规则**：
+- 若 `$VISUAL_STYLE_CONFIGURED` 非空 → 它是**权威视觉锚点**，所有配图风格前缀以它为核心，**不得偏离**到冲突风格（如配置了"温暖自然的生活摄影"就不得生成维多利亚木刻/黑白版画）。
+- 若 `$VISUAL_STYLE_CONFIGURED` 为空（所有层级都未配置视觉）→ 由封面生成步骤（见下文"封面图生成"）从账号定位 + 内容主题 + 受众兜底分析得出 `$COVER_STYLE`，再传递给配图。
+- **不从 writer YAML 推视觉**（writer 仅决定文字风格，已不再携带任何视觉/封面字段）。
+
+基于 `$VISUAL_STYLE_CONFIGURED`（优先）或 `$COVER_STYLE`（兜底），确定适用于所有配图的风格前缀：
 
 格式：`[视觉风格名称], [色调], [构图风格], [技术风格]`
-
-示例映射：
-- `cover_style: "Victorian Woodcut / Etching"` → `Victorian woodcut etching style, black and white with cross-hatching, dramatic composition with negative space, editorial illustration`
-- `cover_style: "中国水墨画"` → `Chinese ink wash painting style, monochrome with subtle color accents, flowing composition with generous white space, traditional brushwork`
 
 #### 步骤 2：逐章节分析与生成
 

@@ -91,17 +91,9 @@ writing_prompt: |
   你是一位简洁有力的写作者。
   用最少的字表达最清晰的观点。
   避免废话，直击要点。
-
-cover_prompt: |
-  为文章生成一个简洁有力的封面提示词。
-  使用极简主义风格。
-
-cover_style: "minimalist"
-cover_mood: "professional"
-cover_color_scheme: ["#000000", "#FFFFFF", "#FF0000"]
 ```
 
-上述结构仅作历史格式参考；当前运行时以服务端资源和频道配置为准，不再读取插件目录下的 writer YAML。
+> **注意**：writer YAML / 频道写作风格只定义**文字风格**，不再包含 `cover_prompt`/`cover_style`/`cover_mood`/`cover_color_scheme` 等封面/视觉字段。图片视觉是与写作风格正交的独立维度，由频道/模板/计划/任务各自的 `style`（视觉）字段承载，在任务创建时按 `task > template > plan > channel` 解析。详见 `article-visual-design` skill。
 
 ---
 
