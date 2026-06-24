@@ -153,7 +153,7 @@
 按 image-plan.md 逐张调用 `generate_image` MCP 工具：
 - 每张使用对应 section 的信息点填充 `{page_content}` 和 `{page_type}`
 - `output_path` 设为 `$DIR/image_01.png`、`$DIR/image_02.png` ... `$DIR/image_03.png`
-- `ref_image_path` 传入封面路径保持视觉一致性
+- `ref_image_path` 留空（纯文生图）；每张使用 image-plan.md 中独立的视觉主体/场景，禁止与其他内容图复用同一场景
 尾图单独生成见 tail.md
 
-> **关键规则**：每张内容图必须使用对应信息点构造独立 prompt，确保内容差异化。通过封面参考图保持视觉一致性。
+> **关键规则**：每张内容图必须使用对应信息点构造独立 prompt（独立场景/视觉主体），确保内容差异化。通过共享「风格延续：{style}」文本块保持调性统一——不使用参考图，避免 Seedream 图生图把场景钉死导致雷同。
