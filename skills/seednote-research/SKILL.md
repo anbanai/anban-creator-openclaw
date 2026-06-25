@@ -8,7 +8,7 @@ user-invocable: false
 
 ## 选题前必做：查看已有选题
 
-在开始选题研究前，调用 `list_channel_topics(channel_id="$CHANNEL_ID")` 查看系统内已有选题列表，避免重复。
+在开始选题研究前，调用 `list_project_topics(project_id="$PROJECT_ID")` 查看系统内已有选题列表，避免重复。
 
 ---
 

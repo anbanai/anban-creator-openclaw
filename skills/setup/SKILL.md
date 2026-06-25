@@ -8,9 +8,9 @@ user-invocable: true
 
 ## 预检
 
-尝试调用 `list_channels` MCP 工具：
+尝试调用 `list_projects` MCP 工具：
 
-- **成功** → 输出连接状态和可用频道，结束
+- **成功** → 输出连接状态和可用项目，结束
 - **失败**（认证错误、连接失败）→ 进入下方密钥设置流程
 
 ## 用户级配置：API Key
@@ -45,12 +45,12 @@ API Key 设置完成后，可根据需要提示用户补充项目级环境变量
 export ANBANWRITER_API_URL="<用户的服务地址>"
 ```
 
-### 默认频道（可选）
+### 默认项目（可选）
 
-如果 `list_channels` 返回多个频道，询问用户是否要设置默认频道，写入：
+如果 `list_projects` 返回多个项目，询问用户是否要设置默认项目，写入：
 
 ```bash
-export ANBANWRITER_DEFAULT_CHANNEL="<频道 ID>"
+export ANBANWRITER_DEFAULT_PROJECT="<项目 ID>"
 ```
 
 **补充规则**：

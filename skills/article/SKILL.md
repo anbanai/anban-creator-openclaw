@@ -22,18 +22,18 @@ user-invocable: true
 
 ### Phase 1: 信息收集
 
-### 步骤 1：获取频道信息与工作目录
+### 步骤 1：获取项目信息与工作目录
 
-**频道选择（必须先完成，再调用频道 API）：**
+**项目选择（必须先完成，再调用项目 API）：**
 
-- 检查 `$ANBANWRITER_DEFAULT_CHANNEL` 环境变量，非空则直接使用
-- 否则调用 `list_channels(platform="article")`，**仅根据** `name`、`positioning`、`keywords` 语义匹配或让用户选择 → `$CHANNEL_ID`
-- **⚠️ 禁止基于 API 可用性选择频道**：不要对多个频道调用 `get_channel_profile`/`list_published_articles` 来评估哪个"可用"。频道选择仅依据 `list_channels` 返回的 `name`、`positioning`、`keywords`。选定频道后，即使后续 API 调用返回错误也不得切换到其他频道
+- 检查 `$ANBANWRITER_DEFAULT_PROJECT` 环境变量，非空则直接使用
+- 否则调用 `list_projects(platform="article")`，**仅根据** `name`、`positioning`、`keywords` 语义匹配或让用户选择 → `$PROJECT_ID`
+- **⚠️ 禁止基于 API 可用性选择项目**：不要对多个项目调用 `get_project_profile`/`list_published_articles` 来评估哪个"可用"。项目选择仅依据 `list_projects` 返回的 `name`、`positioning`、`keywords`。选定项目后，即使后续 API 调用返回错误也不得切换到其他项目
 
-**频道选定后，仅对 `$CHANNEL_ID` 调用：**
+**项目选定后，仅对 `$PROJECT_ID` 调用：**
 
-- `get_channel_profile(channel_id="$CHANNEL_ID", scope="article", task_id="$TASK_ID")` → 获取账号定位、受众、写作风格。**同时解析视觉维度的权威来源**：`$VISUAL_STYLE_CONFIGURED` = profile 的 `style` 字段、`$TEMPLATE_VISUAL_STYLE` = `template_style` 字段、`$VISUAL_STYLE_SOURCE` = `style_source`（task / template / plan / channel）。`task_id` 让服务端额外返回任务关联模板的内容脚手架（`template_writing_style` 写作风格 / `template_structure` 内容结构 / `template_example` 示例），若返回了这些字段，创作正文与配图时必须严格遵守；不传则只拿到 channel 级信息。
-- `list_drafts(channel_id="$CHANNEL_ID")` 和 `list_published_articles(channel_id="$CHANNEL_ID")` → 已有文章标题（如返回错误可忽略，用空列表继续）
+- `get_project_profile(project_id="$PROJECT_ID", scope="article", task_id="$TASK_ID")` → 获取账号定位、受众、写作风格。**同时解析视觉维度的权威来源**：`$VISUAL_STYLE_CONFIGURED` = profile 的 `style` 字段、`$TEMPLATE_VISUAL_STYLE` = `template_style` 字段、`$VISUAL_STYLE_SOURCE` = `style_source`（task / template / plan / project）。`task_id` 让服务端额外返回任务关联模板的内容脚手架（`template_writing_style` 写作风格 / `template_structure` 内容结构 / `template_example` 示例），若返回了这些字段，创作正文与配图时必须严格遵守；不传则只拿到 project 级信息。
+- `list_drafts(project_id="$PROJECT_ID")` 和 `list_published_articles(project_id="$PROJECT_ID")` → 已有文章标题（如返回错误可忽略，用空列表继续）
 - `prepare_workspace(content_type="articles", task_id=TASK_ID)` → 工作目录路径 `$DIR`
 - Bash 执行 `mkdir -p "$DIR"` 创建目录
 
@@ -86,7 +86,7 @@ using the article-visual-design skill 完成以下子步骤。详细规范见 `s
 
 #### 6c：视觉风格确定（配置优先，分析兜底）
 
-视觉风格**优先**取自步骤 1 已解析的任务字段（`task > template > plan > channel`）：
+视觉风格**优先**取自步骤 1 已解析的任务字段（`task > template > plan > project`）：
 - 若 `$VISUAL_STYLE_CONFIGURED` 非空 → 它是**权威视觉锚点**。以它为 `$VISUAL_STYLE` 的核心，三维分析（账号定位 / 内容主题 / 受众）只做**补充细化**（配色、情绪、构图），**绝不可覆盖或偏离**配置的视觉方向。例如配置了"温暖自然的生活摄影"，就不得生成维多利亚木刻/黑白版画等冲突风格。
 - 若 `$VISUAL_STYLE_CONFIGURED` 为空（所有层级都未配置视觉）→ 执行完整三维分析兜底。
 - **不从 writer YAML 推视觉**（writer 仅决定文字风格，已不再携带任何视觉/封面字段）。
@@ -103,7 +103,7 @@ using the article-visual-design skill 完成以下子步骤。详细规范见 `s
 4. 调用 `generate_image`（**`upload_to_cdn=true` 让生成与上传原子化**：同一调用内完成生成→保存→校验→压缩→上传微信 CDN，直接返回 `media_id` + `wechat_url`）：
    ```
    generate_image(
-     channel_id=$CHANNEL_ID,
+     project_id=$PROJECT_ID,
      prompt=封面提示词,
      image_type="cover",
      output_path="$DIR/cover.png",
@@ -141,7 +141,7 @@ using the article-visual-design skill 按 `$DIR/visual-rhythm-plan.md` 中 slot 
 
 ```
 generate_image(
-  channel_id=$CHANNEL_ID,
+  project_id=$PROJECT_ID,
   prompt=<构建的 prompt>,
   image_type="content",
   output_path="$DIR/img_N.png",
@@ -206,10 +206,10 @@ using the content-writing skill 渲染 HTML。**不再使用 `convert_markdown` 
 
 ```
 render_template(
-  channel_id=$CHANNEL_ID,
+  project_id=$PROJECT_ID,
   markdown=<$DIR/04-article-final.md 全文>,
   layout_plan=<$DIR/visual-rhythm-plan.md 中的 layout_plan JSON 块>,
-  theme=<可选，默认用 channel theme>
+  theme=<可选，默认用 project theme>
 )
 ```
 
@@ -249,7 +249,7 @@ using the article-publishing skill 创建 `draft.json` 并发布：
 
 ## 自动决策原则
 
-**全程零用户交互**。所有决策点自动选择最优解（频道选择是唯一例外——多个频道无法匹配时需让用户选择）：
+**全程零用户交互**。所有决策点自动选择最优解（项目选择是唯一例外——多个项目无法匹配时需让用户选择）：
 
 | 决策点 | 自动策略 |
 |--------|----------|
@@ -258,7 +258,7 @@ using the article-publishing skill 创建 `draft.json` 并发布：
 | **视觉模板** | 根据文章结构特征自动选 `templates/article/*.yaml`（listicle / tutorial / story-narrative / long-form-essay），模板定义节奏、配图数量、layout module |
 | **视觉节奏** | 模板选定后，自动把每个 `##` 映射到 slot（hero / section_opener / inline_detail / footer），写入 `visual-rhythm-plan.md` |
 | **配图内容贴切** | 每张图提取 `visual_brief` + `required_entities` + `must_match_excerpts`，生成后强制 vision 校验，失败锐化 prompt 重试 |
-| **视觉风格** | **配置优先**：优先取自任务解析的 `style` 字段（`get_channel_profile` 的 `style`/`style_source`/`template_style`，按 `task > template > plan > channel` 解析）；配置为空时由账号定位+内容主题+受众三维分析兜底；**不使用 writer YAML 的 `cover_style`/`cover_prompt`**（writer 仅决定文字风格）。配图通过 `ref_image_path="$DIR/cover.png"` 保持一致 |
+| **视觉风格** | **配置优先**：优先取自任务解析的 `style` 字段（`get_project_profile` 的 `style`/`style_source`/`template_style`，按 `task > template > plan > project` 解析）；配置为空时由账号定位+内容主题+受众三维分析兜底；**不使用 writer YAML 的 `cover_style`/`cover_prompt`**（writer 仅决定文字风格）。配图通过 `ref_image_path="$DIR/cover.png"` 保持一致 |
 | **HTML 渲染** | 用 `render_template`（带 `layout_plan`）确定性渲染，不再用 `convert_markdown` 自由发挥 |
 | **SEO 优化** | 自动提取关键词，生成标题/摘要/标签，结果用于草稿发布 |
 | **AI 去痕** | 自动检测并移除 5 类 AI 模式（内容/语言/风格/填充/协作痕迹） |
@@ -276,7 +276,7 @@ using the article-publishing skill 创建 `draft.json` 并发布：
 
 ## MCP 工具使用规则
 
-- **必须使用 MCP 工具调用服务端接口**（如 `list_channels`、`generate_image`、`render_template` 等）
+- **必须使用 MCP 工具调用服务端接口**（如 `list_projects`、`generate_image`、`render_template` 等）
 - **禁止编写 JavaScript/Node.js/Python 脚本或创建自定义 HTTP 客户端来调用 MCP 接口**
 - **如果 MCP 工具不可用或调用失败，立即停止并报告错误**，不要尝试自行发现、探测或创建替代连接方式
 - **`prepare_workspace` / `archive_workspace` 仅返回路径，目录创建和文件移动由 agent 本地执行**
@@ -290,7 +290,7 @@ using the article-publishing skill 创建 `draft.json` 并发布：
 - **模板驱动节奏**（硬性要求）：从 `templates/article/*.yaml` 加载模板，不得临时编造节奏
 - **节奏规划完整**（硬性要求）：`visual-rhythm-plan.md` 存在且每个 `##` 都映射到 slot
 - 封面图必须成功生成并上传（硬性要求），**vision 校验通过**
-- **配置优先风格匹配**（硬性要求）：`$VISUAL_STYLE` 优先取自 `get_channel_profile` 的 `style` 字段，配置为空时三维分析兜底；不使用 writer YAML 的 `cover_style`/`cover_prompt`
+- **配置优先风格匹配**（硬性要求）：`$VISUAL_STYLE` 优先取自 `get_project_profile` 的 `style` 字段，配置为空时三维分析兜底；不使用 writer YAML 的 `cover_style`/`cover_prompt`
 - **配图内容贴切**（硬性要求）：`image-plan.md` 每张图含 `visual_brief` + `required_entities` + `must_match_excerpts`，prompt 必须引用章节具体物体/比喻/案例（非通用描述）
 - **Vision 校验闭环**（硬性要求）：每张内容图经过 `verify_with_vision`（或单独 `analyze_image`）校验；至少 80% `verification.passed=true`
 - **参考链一致**（硬性要求）：所有内容配图使用 `ref_image_path="$DIR/cover.png"` 保持视觉一致
@@ -390,7 +390,7 @@ using the article-publishing skill 创建 `draft.json` 并发布：
 ## 最佳实践
 
 1. **模板驱动视觉节奏**：步骤 6a 自动选模板，6b 生成 `visual-rhythm-plan.md` 把每个 `##` 映射到 slot，模板决定图片数量和位置
-2. **视觉风格配置优先**：`$VISUAL_STYLE` 优先取自 `get_channel_profile` 的 `style` 字段（配置锚点），配置为空时由三维分析兜底；不使用 writer YAML 的 cover_style/cover_prompt
+2. **视觉风格配置优先**：`$VISUAL_STYLE` 优先取自 `get_project_profile` 的 `style` 字段（配置锚点），配置为空时由三维分析兜底；不使用 writer YAML 的 cover_style/cover_prompt
 3. **配图内容三件套**：每张图必须有 `visual_brief`（具体画面）+ `required_entities`（必须物体）+ `must_match_excerpts`（章节原句）——这是 vision 校验的前提
 4. **vision 校验闭环**：每张图生成后必须用 `verify_with_vision`（或单独 `analyze_image`）校验，失败锐化 prompt 重试，最多 3 次
 5. **参考链保持风格一致**：所有内容配图使用 `ref_image_path="$DIR/cover.png"`（始终用封面，防止风格漂移）

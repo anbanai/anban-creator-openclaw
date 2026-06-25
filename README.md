@@ -69,7 +69,7 @@ export ANBANWRITER_API_URL="https://api.creator.anbanai.com"
 /setup
 ```
 
-`/setup` 会检查 API Key、MCP 服务连接和当前账号下的频道可用性。
+`/setup` 会检查 API Key、MCP 服务连接和当前账号下的项目可用性。
 
 ## 6. 重启 OpenClaw
 
@@ -81,7 +81,7 @@ export ANBANWRITER_API_URL="https://api.creator.anbanai.com"
 /setup
 ```
 
-如果看到连接成功提示或可用频道列表，就说明接入已经完成。
+如果看到连接成功提示或可用项目列表，就说明接入已经完成。
 
 ## 7. 开始使用
 

@@ -20,11 +20,11 @@ user-invocable: true
 
 ### 第三步：写作风格
 
-在频道配置中填写写作风格描述，或选择后台提供的服务端写作资源。插件目录不再携带本地 writer YAML。
+在项目配置中填写写作风格描述，或选择后台提供的服务端写作资源。插件目录不再携带本地 writer YAML。
 
 ### 第四步：文章主题
 
-在频道配置中选择后台提供的主题资源，或保留默认主题。插件目录不再携带本地 theme YAML。
+在项目配置中选择后台提供的主题资源，或保留默认主题。插件目录不再携带本地 theme YAML。
 
 ### 第五步：AI API 配置（可选）
 
@@ -36,4 +36,4 @@ user-invocable: true
 
 ## 查看账号信息
 
-调用 `get_channel_profile` MCP 工具。
+调用 `get_project_profile` MCP 工具。

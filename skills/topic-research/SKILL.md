@@ -10,12 +10,12 @@ user-invocable: false
 
 | MCP 工具 | 说明 |
 |----------|------|
-| `list_channel_topics` (channel_id) | 查看系统内已有选题（选题前必调） |
-| `research_topics` (channel_id, keywords?, domain?, count?) | 选题研究 |
-| `score_article` (channel_id, content, title?, domain?) | 话题评分 |
-| `generate_outline` (channel_id, topic, template?, domain?, style?, keywords?) | 内容框架生成 |
-| `list_drafts` (channel_id) | 查看已有草稿 |
-| `list_published_articles` (channel_id) | 查看已发布文章 |
+| `list_project_topics` (project_id) | 查看系统内已有选题（选题前必调） |
+| `research_topics` (project_id, keywords?, domain?, count?) | 选题研究 |
+| `score_article` (project_id, content, title?, domain?) | 话题评分 |
+| `generate_outline` (project_id, topic, template?, domain?, style?, keywords?) | 内容框架生成 |
+| `list_drafts` (project_id) | 查看已有草稿 |
+| `list_published_articles` (project_id) | 查看已发布文章 |
 
 ---
 
@@ -25,7 +25,7 @@ user-invocable: false
 
 在开始选题前，先检查已有内容，避免重复主题：
 
-调用 `list_channel_topics(channel_id)` 查看系统内已有选题列表。
+调用 `list_project_topics(project_id)` 查看系统内已有选题列表。
 
 调用 `list_drafts` 和 `list_published_articles` 查看已有内容。
 

@@ -11,7 +11,7 @@
   },
   "skills": ["skills"],
   "mcp": {
-    "anbanwriter": {
+    "anban": {
       "url": "${ANBANWRITER_API_URL:-http://localhost:18060}/mcp",
       "transport": "streamable-http",
       "headers": {

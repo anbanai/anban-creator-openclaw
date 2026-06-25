@@ -18,7 +18,7 @@ user-invocable: false
 
 ## 写作风格
 
-写作风格由频道配置和服务端资源自动应用。调用 `write_article` 时传入频道和主题即可，不需要在插件目录读取本地 writer YAML 文件。
+写作风格由项目配置和服务端资源自动应用。调用 `write_article` 时传入项目和主题即可，不需要在插件目录读取本地 writer YAML 文件。
 
 ## 质量标准
 
