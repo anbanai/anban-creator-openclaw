@@ -62,7 +62,3 @@ export ANBAN_DEFAULT_PROJECT="<项目 ID>"
 告知用户：
 
 > 配置完成。**请退出并重新启动 OpenClaw**，让 MCP 连接生效。重启后再次运行 `/setup` 验证连接。
-
-## 升级提示
-
-如果你之前用的是旧变量名 `ANBANWRITER_API_KEY` / `ANBANWRITER_API_URL` / `ANBANWRITER_DEFAULT_PROJECT`：变量名已升级为 `ANBAN_*`。请把 shell 配置里的旧 `export` 改成新名（或重新运行 `/setup`），旧名已失效，否则 MCP 连不上。
