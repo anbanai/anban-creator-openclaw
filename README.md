@@ -11,7 +11,7 @@
 1. 打开 [Anban Studio / Web 管理端](https://creator.anbanai.com) 注册或登录
 2. 在设置页创建 API Key
 3. 安装 OpenClaw 插件
-4. 配置 `ANBANWRITER_API_KEY`
+4. 配置 `ANBAN_API_KEY`
 5. 运行 `/setup`
 6. 完全退出并重新启动 OpenClaw
 7. 重启后再次运行 `/setup` 验证连接
@@ -48,13 +48,13 @@ openclaw plugins install .
 OpenClaw 插件通过环境变量读取账号信息。最少先把下面这一行加到你的 `~/.zshrc` 或 `~/.bashrc`：
 
 ```bash
-export ANBANWRITER_API_KEY="你的完整 API Key"
+export ANBAN_API_KEY="你的完整 API Key"
 ```
 
 如果你使用官方在线服务，可以额外加上：
 
 ```bash
-export ANBANWRITER_API_URL="https://api.creator.anbanai.com"
+export ANBAN_API_URL="https://api.creator.anbanai.com"
 ```
 
 如果你接的是自建或本地服务，就把这个地址换成你自己的服务地址。
@@ -115,7 +115,7 @@ export ANBANWRITER_API_URL="https://api.creator.anbanai.com"
 ## 遇到问题时先检查
 
 1. 是否已经在 [设置页](https://creator.anbanai.com/settings) 创建并复制了完整 API Key
-2. `ANBANWRITER_API_KEY` 是否已经写入 shell 配置
+2. `ANBAN_API_KEY` 是否已经写入 shell 配置
 3. 是否已经完全退出并重启过 OpenClaw
 4. 重启后是否重新执行过 `/setup`
 

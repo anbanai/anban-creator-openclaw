@@ -26,7 +26,7 @@ user-invocable: true
 
 **项目选择（必须先完成，再调用项目 API）：**
 
-- 检查 `$ANBANWRITER_DEFAULT_PROJECT` 环境变量，非空则直接使用
+- 检查 `$ANBAN_DEFAULT_PROJECT` 环境变量，非空则直接使用
 - 否则调用 `list_projects(platform="article")`，**仅根据** `name`、`positioning`、`keywords` 语义匹配或让用户选择 → `$PROJECT_ID`
 - **⚠️ 禁止基于 API 可用性选择项目**：不要对多个项目调用 `get_project_profile`/`list_published_articles` 来评估哪个"可用"。项目选择仅依据 `list_projects` 返回的 `name`、`positioning`、`keywords`。选定项目后，即使后续 API 调用返回错误也不得切换到其他项目
 

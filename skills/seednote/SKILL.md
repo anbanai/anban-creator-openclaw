@@ -55,7 +55,7 @@ user-invocable: true
 
 **先解析 `$TASK_ID`**：检查 CWD 下是否存在 `.task-context` 文件，从中读取 `TASK_ID=xxx`；否则使用 CWD 目录名作为 `$TASK_ID`。后续所有需要 task_id 的 MCP 工具调用都复用此值。
 
-检查环境变量 `ANBANWRITER_DEFAULT_PROJECT`，若非空则直接使用其值作为 `$PROJECT_ID`，跳到下一步。若为空，调用 MCP 工具：
+检查环境变量 `ANBAN_DEFAULT_PROJECT`，若非空则直接使用其值作为 `$PROJECT_ID`，跳到下一步。若为空，调用 MCP 工具：
 - `list_projects(platform="seednote")` → 获取项目列表。如果只有一个匹配项目，记为 `$PROJECT_ID`。**如果有多个匹配项目**：根据用户的话题/需求与每个项目的 `name`、`positioning`、`keywords` 进行语义匹配；如果能明确判断最匹配的项目则使用该项目的 `project_id`；如果无法明确判断，**必须向用户展示所有可选项目**（列出项目名称和定位），让用户选择后继续
 - `get_project_profile(project_id="$PROJECT_ID", scope="seednote", task_id="$TASK_ID")` → 获取账号定位、关键词等信息。`task_id` 让服务端用任务派生的模板风格覆盖 project 默认风格（`style_source="task"`），不传则只拿到 project 级风格。
 - `list_project_topics(project_id="$PROJECT_ID")` → 查看系统内已有选题，后续选题避开
@@ -92,7 +92,7 @@ using the seednote-writing skill 扫描标题与正文，生成 `$DIR/compliance
 
 **先解析 `$TASK_ID`**（若尚未解析）：检查 CWD 下是否存在 `.task-context` 文件，从中读取 `TASK_ID=xxx`；否则使用 CWD 目录名作为 `$TASK_ID`。
 
-检查环境变量 `ANBANWRITER_DEFAULT_PROJECT`，若非空则直接使用其值作为 `$PROJECT_ID`，跳到步骤 2。若为空，调用 MCP 工具：
+检查环境变量 `ANBAN_DEFAULT_PROJECT`，若非空则直接使用其值作为 `$PROJECT_ID`，跳到步骤 2。若为空，调用 MCP 工具：
 - `list_projects(platform="seednote")` → 获取项目列表。如果只有一个匹配项目，记为 `$PROJECT_ID`。**如果有多个匹配项目**：根据用户的话题/需求与每个项目的 `name`、`positioning`、`keywords` 进行语义匹配；如果能明确判断最匹配的项目则使用该项目的 `project_id`；如果无法明确判断，**必须向用户展示所有可选项目**（列出项目名称和定位），让用户选择后继续
 - `get_project_profile(project_id="$PROJECT_ID", scope="seednote", task_id="$TASK_ID")` → 获取账号信息。`task_id` 让服务端用任务派生的模板风格覆盖 project 默认风格（`style_source="task"`）。
 
