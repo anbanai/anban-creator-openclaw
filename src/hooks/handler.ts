@@ -69,6 +69,8 @@ function summarizeArchive(
       return summarizeArticleDelivery(input, output, archivePath);
     case "seednote":
       return summarizeSeednoteDelivery(input, output, archivePath);
+    case "ecommerce":
+      return summarizeEcommerceDelivery(input, output, archivePath);
     default:
       return summarizeGenericDelivery(contentType, archivePath);
   }
@@ -330,6 +332,77 @@ function summarizeSeednoteDelivery(
   return lines.join("\n");
 }
 
+function summarizeEcommerceDelivery(
+  input: Record<string, any>,
+  output: any,
+  archivePath: string
+): string {
+  // Best-effort artifact gate: OpenClaw after_tool_call is post-execution and
+  // cannot block, so we can only warn. Mirrors the ecommerce SubagentStop
+  // delivery-summary checks in claudecode/hooks/hooks.json + codex/hooks/hooks.json
+  // but as a soft warning rather than a prompt-driven self-check.
+  const requiredArtifacts = [
+    "product-bible.md",
+    "copywriting.md",
+    "asset-plan.md",
+    "best-refs.md",
+    "compliance-report.md",
+    "manifest.json",
+  ];
+  const missingArtifacts = requiredArtifacts.filter(
+    (name) => !hasFile(archivePath, name)
+  );
+  // Count ecommerce image outputs by module prefix. Each selected module must
+  // yield at least one image; main images (main_01..05) are always produced.
+  const moduleCounts = countEcommerceImages(archivePath);
+  const totalImages = Object.values(moduleCounts).reduce((a, b) => a + b, 0);
+  if (moduleCounts.main === 0) {
+    missingArtifacts.push(`主图（main_*.png，必选模块至少 1 张）`);
+  }
+  if (totalImages === 0) {
+    missingArtifacts.push(`图片产物（未找到任何 main_/detail_/cover_/share_/sku_ 前缀图片）`);
+  }
+
+  const warningBlock =
+    missingArtifacts.length > 0
+      ? [
+        ``,
+        `[GATE-WARN] 机械闸门警告（OpenClaw 无法 block，请人工确认）：`,
+        ...missingArtifacts.map((m) => `  - 缺失 ${m}`),
+        ``,
+        `这些产物缺失通常意味着 ecommerce 流程某步被跳过，`,
+        `（产品档案 / 卖点 FABE / 资产规划 / 视觉自检 / 合规 / 清单）。`,
+        `建议人工检查后重跑。`,
+        ``,
+      ]
+      : [];
+
+  const lines = [
+    `**电商出图创作完成**`,
+    `- 归档路径：${archivePath}`,
+    ``,
+    `请检查以下产出文件：`,
+    "- `product-bible.md` — 产品档案（品类/品牌/色彩/材质/形状/包装文字/卖点 + 锚点 $ANCHOR_REF）",
+    "- `copywriting.md` — 卖点文案（排序卖点 / 主图文案 / 详情 FABE）",
+    "- `asset-plan.md` — 资产规划（已选模块 + 各模块图片数量）",
+    "- `main_01..05.png` — 主图（必选）",
+    "- `detail_*.png` / `cover_*.png` / `share_*.png` / `sku_*.png` — 按已选模块产出",
+    "- `best-refs.md` — 一致性自检（逐图 provider / verify_with_vision 结果）",
+    "- `compliance-report.md` — 广告法极限词/违禁词合规",
+    "- `manifest.json` — 交付清单（按模块含文件名/尺寸/provider/自检/合规）",
+    ``,
+    `质量检查要点：`,
+    `- 产品跨图视觉一致性（logo / 主色 / 形状）`,
+    `- 主图①是否有强卖点与钩子`,
+    `- 详情页是否有叙事逻辑（FABE）`,
+    `- 图内文字无乱码 / 无多余英文（中文场景）`,
+    `- 未多图复用同一参考图导致雷同`,
+    ...warningBlock,
+  ];
+
+  return lines.join("\n");
+}
+
 // Best-effort file checks for the seednote artifact gate.
 // existsSync/readdirSync only throw on permission errors or invalid args;
 // missing files return false / empty array. We deliberately don't catch —
@@ -352,6 +425,27 @@ function countContentImages(dir: string): number {
   if (!existsSync(dir)) return 0;
   return readdirSync(dir).filter((n: string) => /^image_.*\.png$/i.test(n))
     .length;
+}
+
+// Count ecommerce image outputs grouped by module prefix. Ecommerce filenames
+// follow the main_/detail_/cover_/share_/sku_ convention (lowercase, png). Used
+// by the ecommerce artifact gate to confirm at least the mandatory main module
+// produced images.
+function countEcommerceImages(
+  dir: string
+): { main: number; detail: number; cover: number; share: number; sku: number } {
+  const zero = { main: 0, detail: 0, cover: 0, share: 0, sku: 0 };
+  if (!existsSync(dir)) return zero;
+  const entries = readdirSync(dir);
+  const count = (re: RegExp) =>
+    entries.filter((n: string) => re.test(n)).length;
+  return {
+    main: count(/^main_.*\.png$/i),
+    detail: count(/^detail_.*\.png$/i),
+    cover: count(/^cover_.*\.png$/i),
+    share: count(/^share_.*\.png$/i),
+    sku: count(/^sku_.*\.png$/i),
+  };
 }
 
 // Parse 「计划图片数量: N 张」from image-plan.md (written by skill step 3). Content
