@@ -1,6 +1,6 @@
 ---
 name: article-publishing
-description: Creates and manages WeChat news article drafts with HTML formatting. Use when creating or managing WeChat news article drafts.
+description: Creates and manages WeChat news article drafts (图文草稿) with HTML formatting. Use when creating or managing WeChat news article drafts. Also use when user mentions '发草稿', '发布文章', '创建草稿', 'publish draft', '草稿箱', or when the article pipeline reaches the draft publishing step.
 user-invocable: false
 ---
 
@@ -59,10 +59,32 @@ user-invocable: false
 
 ## 完整发布工作流
 
-1. 调用 `convert_markdown` 将 Markdown 转为 WeChat HTML
-2. 调用 `generate_image(upload_to_cdn=true)` 生成封面图——**生成与上传原子化**：同一调用内完成生成→压缩→上传微信 CDN，直接返回 `media_id` + `wechat_url`，**无需单独 `upload_image`**。**流水线场景**：article 流水线步骤 6 已取得封面 `media_id`（`generate_image(upload_to_cdn=true)` 原子上传返回），直接复用即可，跳过本步
+1. 调用 `render_template`（带 `layout_plan`）将 Markdown + 节奏计划确定性渲染为 WeChat HTML（替代旧的 `convert_markdown`）
+2. 调用 `generate_image`（带 `verify_with_vision=true, upload_to_cdn=true`）生成封面图——**生成与上传原子化**，同一调用内完成生成→校验→压缩→上传微信 CDN，直接返回 `media_id` + `wechat_url`（无需单独 `upload_image`）。**流水线场景**：步骤 6d 已取得封面 `media_id`，直接复用即可，跳过本步
 3. （仅当上一步返回 `upload_error` 时）调用 `upload_image(file_path="$DIR/cover.png")` 单独重传获取 `media_id`，不重新生成
 4. 调用 `publish_draft` 创建草稿
+
+## 流水线集成
+
+本 skill 是 article 流水线的最后一步。前置条件：
+
+| 前置产出 | 来源 | 用途 |
+|----------|------|------|
+| `$DIR/05-article.html` | content-writing skill（通过 `render_template` 生成） | 作为 articles[0].content |
+| `$DIR/cover.png` 的 `media_id` | article-visual-design skill（已通过 vision 校验） | 作为 articles[0].thumb_media_id |
+| `$DIR/seo-result.md` | seo-optimization skill | 提取优化后的标题和摘要 |
+| `$DIR/visual-rhythm-plan.md` | article-visual-design skill | 渲染审计参考（HTML 应已按 plan 渲染） |
+| `$DIR/images.json` | article-visual-design skill | 视觉审计参考（含 vision 校验记录） |
+
+## 发布前验证
+
+创建草稿前，确认以下所有项：
+
+- [ ] HTML 文件存在且内容完整
+- [ ] 封面 `media_id` 已获取（非空）
+- [ ] 标题使用 SEO 优化标题（来自 seo-result.md）
+- [ ] 摘要使用 SEO 优化摘要（来自 seo-result.md）
+- [ ] 内容大小 < 20,000 字符或 1MB
 
 ## 注意事项
 
@@ -70,6 +92,15 @@ user-invocable: false
 - 封面图需通过 thumb_media_id 指定
 - 内容大小限制：< 20,000 字符或 1MB
 - 安全标签：section, p, span, strong, em, h1-h6, ul, ol, li, blockquote, pre, code, table, img, br, hr
+
+## 常见失败与修复
+
+| 问题 | 原因 | 修复 |
+|------|------|------|
+| 草稿创建失败 | media_id 无效或过期 | 重新上传封面图获取新 media_id |
+| 内容超限 | HTML 超过 20,000 字符 | 精简文章内容或拆分为多篇 |
+| 标题过长 | 超过 64 字符 | 缩短标题 |
+| 摘要过长 | 超过 120 字符 | 缩短摘要 |
 
 ## 参考文档
 

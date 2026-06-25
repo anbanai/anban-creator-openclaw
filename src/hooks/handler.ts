@@ -79,6 +79,29 @@ function summarizeArticleDelivery(
   output: any,
   archivePath: string
 ): string {
+  // Best-effort visual-quality gate for the article pipeline. OpenClaw
+  // after_tool_call is post-execution and cannot block, so we can only warn.
+  // Mirrors the claudecode plugin's render_template / vision / image-dedup
+  // checks but as soft warnings.
+  const renderWarn = renderTemplateWarning(archivePath);
+  const visionWarn = visionPassRateWarning(archivePath);
+  const dedupWarn = imageUrlDedupWarning(archivePath);
+  const warningBlock =
+    renderWarn || visionWarn || dedupWarn
+      ? [
+          ``,
+          `[GATE-WARN] 视觉质量闸门警告（OpenClaw 无法 block，请人工确认）：`,
+          ...(renderWarn ? [`  - ${renderWarn}`] : []),
+          ...(visionWarn ? [`  - ${visionWarn}`] : []),
+          ...(dedupWarn ? [`  - ${dedupWarn}`] : []),
+          ``,
+          `这些项缺失通常意味着 article 流水线步骤 6/7/8 未按新规范执行`,
+          `（render_template 渲染 / vision 校验 / 正文图独立上 CDN）。`,
+          `建议人工检查后重跑。`,
+          ``,
+        ]
+      : [];
+
   const lines = [
     `**微信公众号文章创作完成**`,
     `- 归档路径：${archivePath}`,
@@ -90,17 +113,141 @@ function summarizeArticleDelivery(
     "- `04-article-final.md` — 最终稿（去AI痕迹、合规检查）",
     "- `05-article.html` — 微信 HTML 格式",
     "- `cover.png` — 封面图",
-    "- `images.json` — 配图 CDN 链接",
+    "- `images.json` — 配图 CDN 链接（含 vision 校验记录）",
     "- `draft.json` — 草稿信息",
     ``,
     `质量检查要点：`,
     `- 文章是否有 ≥3 个二级标题`,
     `- 每个章节是否有配图`,
     `- 封面图是否生成并上传成功`,
+    `- **\`05-article.html\` 是否由 \`render_template\` 生成**（非 \`convert_markdown\`）`,
+    `- **vision 校验通过率**（images.json 中 \`verification.passed\` 比例 ≥80%）`,
+    `- **正文图片是否存在全图相同 / 复用封面 URL**`,
     `- 草稿是否创建成功`,
+    ...warningBlock,
   ];
 
   return lines.join("\n");
+}
+
+// Render-template warning: the article pipeline step 8 must produce
+// 05-article.html via render_template (with layout_plan), not convert_markdown.
+// We can't see the tool call that produced the file from after_tool_call, so
+// we rely on two indirect signals:
+//   1. visual-rhythm-plan.md exists (prerequisite for render_template layout_plan)
+//   2. final-review.md exists and mentions render_template / render_audit
+// Missing both → likely fell back to convert_markdown.
+function renderTemplateWarning(dir: string): string | null {
+  if (!hasFile(dir, "05-article.html")) {
+    return null; // HTML missing is a different problem; don't double-warn
+  }
+  const hasRhythmPlan = hasFile(dir, "visual-rhythm-plan.md");
+  const reviewText = readTextFile(dir, "final-review.md");
+  const reviewMentionsRender =
+    !!reviewText &&
+    /render_template|render_audit/i.test(reviewText);
+  if (hasRhythmPlan || reviewMentionsRender) {
+    return null;
+  }
+  return `05-article.html 疑似由 convert_markdown 生成（未找到 visual-rhythm-plan.md，且 final-review.md 未提及 render_template/render_audit）；新流水线步骤 8 必须用 render_template`;
+}
+
+// Vision pass-rate warning: at least 80% of content images in images.json
+// must have verification.passed === true. Returns null when images.json is
+// missing or empty (can't compute) so we don't false-positive on legacy runs.
+function visionPassRateWarning(dir: string): string | null {
+  const images = readImagesJson(dir);
+  if (images === null || images.length === 0) {
+    return null;
+  }
+  const passed = images.filter((entry) => entry?.verification?.passed === true)
+    .length;
+  const total = images.length;
+  const ratio = total > 0 ? passed / total : 1;
+  if (ratio >= 0.8) {
+    return null;
+  }
+  return `vision 校验通过率不足：images.json 中 ${passed}/${total} 张图 verification.passed=true（${(ratio * 100).toFixed(0)}% < 80% 闸门）`;
+}
+
+// Image URL dedup warning: content images must each have a unique wechat_url,
+// and none may equal the cover's wechat_url. The server publish_draft hard-
+// blocks drafts where ≥2 content images share a single URL, or where a content
+// image reuses the cover URL.
+function imageUrlDedupWarning(dir: string): string | null {
+  const images = readImagesJson(dir);
+  if (images === null || images.length === 0) {
+    return null;
+  }
+  const contentUrls = images
+    .filter((entry) => entry?.image_type === "content")
+    .map((entry) => entry?.wechat_url ?? entry?.url)
+    .filter((u): u is string => typeof u === "string" && u.length > 0);
+  if (contentUrls.length === 0) {
+    return null;
+  }
+  const seen = new Set<string>();
+  const dupes: string[] = [];
+  for (const u of contentUrls) {
+    if (seen.has(u)) dupes.push(u);
+    else seen.add(u);
+  }
+  // Cover URL = the single cover entry's wechat_url (or url fallback).
+  const coverEntry = images.find((entry) => entry?.image_type === "cover");
+  const coverUrl =
+    coverEntry?.wechat_url ?? coverEntry?.url ?? null;
+  const coverReuse =
+    typeof coverUrl === "string" && contentUrls.includes(coverUrl)
+      ? coverUrl
+      : null;
+  if (dupes.length === 0 && !coverReuse) {
+    return null;
+  }
+  const parts: string[] = [];
+  if (dupes.length > 0) {
+    parts.push(
+      `正文图存在重复 wechat_url（${dupes.length} 张复用，服务端 publish_draft 会硬拦截）`
+    );
+  }
+  if (coverReuse) {
+    parts.push(
+      `正文图复用了封面 wechat_url（封面只能用于 thumb_media_id，不得复用为正文图）`
+    );
+  }
+  return parts.join("；");
+}
+
+// Parse images.json in the archive dir. Returns null when missing or unparsable
+// (best-effort: we never throw from a delivery summary).
+function readImagesJson(
+  dir: string
+): Array<Record<string, any>> | null {
+  const path = join(dir, "images.json");
+  if (!existsSync(path)) return null;
+  let text: string;
+  try {
+    text = readFileSync(path, "utf8");
+  } catch {
+    return null;
+  }
+  try {
+    const parsed = JSON.parse(text);
+    if (Array.isArray(parsed)) return parsed as Array<Record<string, any>>;
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+// Read a text file in the archive dir, returning null when missing/unreadable.
+function readTextFile(dir: string, name: string): string | null {
+  const path = join(dir, name);
+  if (!existsSync(path)) return null;
+  try {
+    return readFileSync(path, "utf8");
+  } catch {
+    return null;
+  }
 }
 
 function summarizeSeednoteDelivery(
