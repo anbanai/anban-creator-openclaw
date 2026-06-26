@@ -6,6 +6,21 @@ user-invocable: false
 
 # 种草笔记选题研究知识库
 
+## 选题来源（优先选题池，最先执行）
+
+> 仅原创模式适用。复刻模式（用户提供笔记 ID/链接）不做选题。
+
+先确定本次笔记选题，**不要凭空搜**。
+
+**如何判断任务是否已指定主题**（看 user prompt）：含 `create content about: <X>` → `<X>` 是指定主题；是 `research and create content ... choose the optimal theme` 这类让你自己选题的措辞 → 未指定；⚠️ 项目 keywords 不是主题。
+
+1. **任务已指定主题**（user prompt 含 `about: <X>`）→ **直接采用 `<X>`，禁止调 `claim_topic`**（避免与服务端预认领重复消费），把它作为 `search_feeds` 的关键词；评分模型仅作参考。
+2. **未指定主题** → 先 `claim_topic(project_id="$PROJECT_ID", task_id="$TASK_ID")`：返回非空 `topic` → 采用，作为 `search_feeds` 关键词；返回 `null`（池空）→ 继续下方研究流程，自行搜索 + 评分选题。
+
+> 选题池是用户预置、希望优先消费的选题。只要池里有，就必须用池里的。
+
+---
+
 ## 选题前必做：查看已有选题
 
 在开始选题研究前，调用 `list_project_topics(project_id="$PROJECT_ID")` 查看系统内已有选题列表，避免重复。
@@ -26,6 +41,9 @@ user-invocable: false
 ## MCP 工具用法
 
 ```
+# 从项目选题池认领下一个未用选题（选题首选来源，池非空必用）
+claim_topic(project_id="$PROJECT_ID", task_id="$TASK_ID")
+
 # 搜索相关话题的热门笔记（返回结果包含 feed_id 和 xsecToken）
 search_feeds(keyword="<话题关键词>")
 

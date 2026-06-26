@@ -10,6 +10,7 @@ user-invocable: false
 
 | MCP 工具 | 说明 |
 |----------|------|
+| `claim_topic` (project_id, task_id?) | 从选题池认领下一个未用选题（选题**首选来源**，池非空必用） |
 | `list_project_topics` (project_id) | 查看系统内已有选题（选题前必调） |
 | `research_topics` (project_id, keywords?, domain?, count?) | 选题研究 |
 | `score_article` (project_id, content, title?, domain?) | 话题评分 |
@@ -20,6 +21,17 @@ user-invocable: false
 ---
 
 ## 核心功能
+
+### 选题来源（优先选题池，最先执行）
+
+选题前先确定本次选题，**不要凭空 research**。
+
+**如何判断任务是否已指定主题**（看 user prompt）：含 `create content about: <X>` → `<X>` 是指定主题；是 `research and create content ... choose the optimal theme` 这类让你自己选题的措辞 → 未指定；⚠️ 项目 keywords 不是主题。
+
+1. **任务已指定主题**（user prompt 含 `about: <X>`）→ **直接采用 `<X>`，禁止调 `claim_topic`**（避免与服务端预认领重复消费）。仍执行「0. 查看已有内容」查重（冲突则调整措辞），通过后跳到「2. 内容框架生成」。
+2. **未指定主题** → 先 `claim_topic(project_id="$PROJECT_ID", task_id="$TASK_ID")`：返回非空 `topic` → 采用，执行「0. 查看已有内容」后跳到「2. 内容框架生成」；返回 `null`（池空）→ 继续下方 0～1 的研究流程。
+
+> 选题池是用户预置、希望优先消费的选题。只要池里有，就必须用池里的。
 
 ### 0. 查看已有内容（选题前必做）
 
