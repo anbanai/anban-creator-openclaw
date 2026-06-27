@@ -44,6 +44,17 @@ user-invocable: true
 
 决策过程透明记录在 `$DIR/*.md` 文件中，不向用户提问。
 
+**模型选择指导**（一致性敏感任务）：图像模型由用户建任务时 `image_model_key` 选定，agent 不擅自切换。但**当所选模型为火山 Seedream（单参考）且任务含复杂包装文字/多部位高保真要求时**，在 manifest 与最终报告**如实提示保真风险**，并建议用户为一致性敏感模块（主图①/详情核心场景）改用多参考模型（`openai-gpt-image` 多参考保真最好；Gemini 次之）。这是诚实披露，不是自动切换——切换需用户在建任务时重新选定。
+
+**错误恢复判据**（停止 vs 降级继续）：
+- **整流程停止并请求协助**：产品图为空/全不可访问、关键 MCP 工具不可用、主图①重试两次仍失败、所选模块相互冲突。
+- **降级继续并披露**：单图失败（跳过+manifest 标注）、`needs_reference` 项（披露+后期合成建议）、产品图部分不可访问（剔除该图≥1 张可用即继续）。
+- **透明**：所有降级与 `needs_reference` 必须在 manifest 与最终报告披露，不得静默。
+
+**视觉自检 PASS 率阈值**：一致性关键模块（主图①、详情核心场景）须自检 PASS；非关键模块允许 `needs_reference`。整体 PASS 率目标 ≥90%；低于此在报告标注并给出风险项。
+
+**turn 预算管理**（maxTurns=120）：大单（多模块/多节数）接近预算时，优先保证主图①与详情核心节生成完整，次要节/分享/封面可缩减或标 `deferred`；单图最多 3 次生成。进度报告标注剩余预算与已完成模块。
+
 ## MCP 工具使用规则
 
 - **必须使用 MCP 工具调用服务端接口**（如 `list_projects`、`get_project_profile`、`generate_image`、`analyze_image`、`prepare_workspace`、`archive_workspace`、`update_task_progress`、`submit_agent_feedback` 等）
@@ -59,13 +70,16 @@ user-invocable: true
 
 > **交付模块与数量严格以任务配置的 `selected_modules` 为准**：未勾选的模块**禁止生成**、`asset-plan.md` 不得含对应节、manifest 与最终报告不含该模块。默认：主图 5 张、详情 8-12 节、封面 1-3 张、分享 1-3 张、SKU 按变体数。
 
+> **humanizer 位置**：`humanizer` 不是独立步骤，而是 `ecommerce-copywriting`（步骤 4）内部步骤 4.5——卖点/主图/详情/分享文案定稿后统一去 AI 味，再进入步骤 6 合规扫描。顺序固定：**先去 AI，后合规**。
+> **平台与类目贯穿**：`target_platform`（taobao/jd/douyin/xhs/wechat_store）影响步骤 4 文案口吻、步骤 5 视觉尺寸/白底/调性、步骤 6 违禁词；`category`（服饰/3C/食品/美妆/家居）影响步骤 3 部位识别、步骤 5 主图套系与详情结构（详见各 skill 的平台/类目章节）。
+
 ### 步骤 1：获取项目与任务输入
 
 **先解析 `$TASK_ID`**：检查 CWD 下是否存在 `.task-context` 文件，从中读取 `TASK_ID=xxx`；否则使用 CWD 目录名作为 `$TASK_ID`。后续所有需要 task_id 的 MCP 工具调用都复用此值。
 
 调用 `update_task_progress(task_id="$TASK_ID", stage="project", title="项目选择", description="选择目标电商项目")`。检查环境变量 `ANBAN_DEFAULT_PROJECT`，若非空则直接用作 `$PROJECT_ID`。若为空，调用 `list_projects(platform="ecommerce")`：只有一个匹配项目直接用；多个则按用户品类/品牌与项目 `name`/`positioning`/`keywords` 语义匹配，无法判断则向用户展示候选让其选择。
 
-调用 `get_project_profile(project_id="$PROJECT_ID", scope="ecommerce", task_id="$TASK_ID")` 获取品牌定位、受众、关键词、参考图/风格描述、**已解析的 `image_model{provider,model,key}`** 与 `consistency_audit:true`。**`task_id` 必传**：服务端用任务派生的模板风格覆盖 project 默认风格（`style_source="task"`），`image_model` 也由 `task.ImageModelKey` 解析。
+调用 `get_project_profile(project_id="$PROJECT_ID", scope="ecommerce", task_id="$TASK_ID")` 获取品牌定位、受众、关键词、参考图/风格描述、**已解析的 `image_model{provider,model,key}`** 与 `consistency_audit:true`。**`task_id` 必传**：服务端用任务派生的模板风格覆盖 project 默认风格（`visual_style_source="task"`），`image_model` 也由 `task.ImageModelKey` 解析。
 
 **产品图发现 → `$PRODUCT_PHOTOS`**：服务端把上传的产品图下载到 `$DIR/.anbanwriter/products/`（=`get_project_profile` 的 `ecommerce.product_photo_dir`），并写 `index.json`（JSON 数组，元素为 `product_NN.<ext>`）；读 `index.json` 拼路径得到 `$PRODUCT_PHOTOS`（用于 `analyze_image` 与参考图），期望数见 `product_photo_count`。其余任务输入：`selected_modules`、`target_platform`、`selling_points`（可选）、`visual_style`、语言。**`index.json` 缺失或产品图全无可访问 → 停止并请求用户上传产品图。** 逐张验证可访问；任一不可访问记录并降级（剔除后继续，至少保留 1 张）。
 
