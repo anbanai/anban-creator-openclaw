@@ -2,8 +2,6 @@
 
 > 微信公众号 & 种草笔记 AI 内容创作插件，支持 OpenClaw 平台的原生插件集成。
 
-> **从旧版本升级？** `/init` 命令已改名为 `/setup`，与其他 anbanwriter 插件命名对齐。如果你之前在用 `/init` 配置 API Key，请改用 `/setup`。
-
 ## 接入流程
 
 第一次使用，按下面顺序做最清晰：
@@ -12,9 +10,9 @@
 2. 在设置页创建 API Key
 3. 安装 OpenClaw 插件
 4. 配置 `ANBAN_API_KEY`
-5. 运行 `/setup`
+5. 运行 `/anban-setup`
 6. 完全退出并重新启动 OpenClaw
-7. 重启后再次运行 `/setup` 验证连接
+7. 重启后再次运行 `/anban-setup` 验证连接
 8. 开始执行创作命令
 
 ---
@@ -61,24 +59,24 @@ export ANBAN_API_URL="https://api.creator.anbanai.com"
 
 写入后执行一次 `source ~/.zshrc`（或重开一个终端窗口），再继续下一步。
 
-## 5. 运行 `/setup`
+## 5. 运行 `/anban-setup`
 
 安装并配置好 Key 后，在 OpenClaw 中运行：
 
 ```bash
-/setup
+/anban-setup
 ```
 
-`/setup` 会检查 API Key、MCP 服务连接和当前账号下的项目可用性。
+`/anban-setup` 会检查 API Key、MCP 服务连接和当前账号下的项目可用性。
 
 ## 6. 重启 OpenClaw
 
-`/setup` 跑完以后，请**完全退出并重新启动 OpenClaw**，让新的环境变量和插件连接正式生效。
+`/anban-setup` 跑完以后，请**完全退出并重新启动 OpenClaw**，让新的环境变量和插件连接正式生效。
 
 重启后再执行一次：
 
 ```bash
-/setup
+/anban-setup
 ```
 
 如果看到连接成功提示或可用项目列表，就说明接入已经完成。
@@ -105,7 +103,7 @@ export ANBAN_API_URL="https://api.creator.anbanai.com"
 
 ## 常用命令
 
-- `/setup`
+- `/anban-setup`
   初始化配置并验证连接
 - `/article`
   公众号图文创作
@@ -117,7 +115,7 @@ export ANBAN_API_URL="https://api.creator.anbanai.com"
 1. 是否已经在 [设置页](https://creator.anbanai.com/settings) 创建并复制了完整 API Key
 2. `ANBAN_API_KEY` 是否已经写入 shell 配置
 3. 是否已经完全退出并重启过 OpenClaw
-4. 重启后是否重新执行过 `/setup`
+4. 重启后是否重新执行过 `/anban-setup`
 
 ## 创作引擎
 
