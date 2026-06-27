@@ -32,7 +32,7 @@ user-invocable: true
 
 **项目选定后，仅对 `$PROJECT_ID` 调用：**
 
-- `get_project_profile(project_id="$PROJECT_ID", scope="article", task_id="$TASK_ID")` → 获取账号定位、受众、写作风格。**同时解析视觉维度的权威来源**：`$VISUAL_STYLE_CONFIGURED` = profile 的 `style` 字段、`$TEMPLATE_VISUAL_STYLE` = `template_style` 字段、`$VISUAL_STYLE_SOURCE` = `style_source`（task / template / plan / project）。`task_id` 让服务端额外返回任务关联模板的内容脚手架（`template_writing_style` 写作风格 / `template_structure` 内容结构 / `template_example` 示例），若返回了这些字段，创作正文与配图时必须严格遵守；不传则只拿到 project 级信息。
+- `get_project_profile(project_id="$PROJECT_ID", scope="article", task_id="$TASK_ID")` → 获取账号定位、受众、写作风格。**同时解析视觉维度的权威来源**：`$VISUAL_STYLE_CONFIGURED` = profile 的 `style` 字段、`$TEMPLATE_VISUAL_STYLE` = `template_style` 字段、`$VISUAL_STYLE_SOURCE` = `style_source`（task / template / plan / project）。`task_id` 让服务端额外返回任务关联模板的内容脚手架（`template_writing_style` 写作风格 / `template_structure` 内容结构 / `template_example` 示例），若返回了这些字段，创作正文与配图时必须严格遵守；不传则只拿到 project 级信息。**务必区分两个易混字段**：顶层 `author` 是公众号**署名**（步骤 10 发布时原样填入 `draft.json` 的 author，空则省略）；`template_writing_style` 是**写作口吻**（驱动正文语气），`template_author_avatar` 是人设头像；三者用途不同，**绝非署名、绝不混用**。
 - `list_drafts(project_id="$PROJECT_ID")` 和 `list_published_articles(project_id="$PROJECT_ID")` → 已有文章标题（如返回错误可忽略，用空列表继续）
 - `prepare_workspace(content_type="articles", task_id=TASK_ID)` → 工作目录路径 `$DIR`
 - Bash 执行 `mkdir -p "$DIR"` 创建目录
@@ -93,31 +93,32 @@ using the article-visual-design skill 完成以下子步骤。详细规范见 `s
 
 产出 `$VISUAL_STYLE`（含配置锚点 + 细化方向）/ `$COLOR_PALETTE` / `$MOOD` / `$VISUAL_STYLE_SOURCE`。映射关系见 `skills/article-visual-design/references/cover.md`。
 
-#### 6d：生成封面（带 vision 校验，生成与上传原子化）
+#### 6d：生成封面（委托 article-cover-design skill，生成与上传原子化）
 
-基于 6c 的风格分析与文章核心隐喻构建封面 prompt：
+封面是全篇风格锚点。**封面设计已独立成稿**——using the `article-cover-design` skill：硬编码官方比例（900×383 / 2.35:1）、中心安全区构图（转发卡 1:1 兼容）、纯图无文字（微信自动叠加标题）、从文章核心隐喻推导视觉概念、vision 6 维评分卡把关。本步骤只交代与本流水线的衔接：
 
-1. 从 `$DIR/04-article-final.md` 提取核心论点和最强视觉隐喻
-2. 按 `skills/article-visual-design/references/cover.md` 模板构建 prompt
-3. 构建封面 `required_entities`（必须出现的具体物体）和 vision 校验 prompt
-4. 调用 `generate_image`（**`upload_to_cdn=true` 让生成与上传原子化**：同一调用内完成生成→保存→校验→压缩→上传微信 CDN，直接返回 `media_id` + `wechat_url`）：
+1. 从 `$DIR/04-article-final.md` 提取核心论点和最强视觉隐喻，交给 `article-cover-design` skill 推导视觉概念（绝不生成通用素材图）。
+2. 调用 `generate_image`（**`upload_to_cdn=true` 让生成与上传原子化**：同一调用内完成生成→裁剪→校验→压缩→上传微信 CDN，直接返回 `media_id` + `wechat_url`）：
    ```
    generate_image(
      project_id=$PROJECT_ID,
-     prompt=封面提示词,
+     prompt=<article-cover-design skill 构建的封面提示词>,
      image_type="cover",
      output_path="$DIR/cover.png",
      task_id=$TASK_ID,
-     size="2.35:1",
+     size="21:9",
      verify_with_vision=true,
-     verification_prompt=<vision 校验 prompt>,
+     verification_prompt=<6 维评分卡>,
      upload_to_cdn=true
    )
    ```
-5. 校验失败时重试一次（更换 prompt 措辞，**仍带 `upload_to_cdn=true`**），仍失败则请求用户协助。**封面必须 vision 校验通过后才可作为 `thumb_media_id`**；未通过 vision 的封面不得用于发布。
-6. 从返回值取 `media_id`（发布草稿的 thumb）+ `wechat_url`（`$COVER_CDN_URL`，**仅供 thumb_media_id 来源识别**，不得复用为正文 `<img src>`）。**不再单独调用 `upload_image`**。若返回 `upload_error`（生成成功但上传失败），用 `upload_image(file_path="$DIR/cover.png")` 单独重传即可，**无需重新生成**。
-7. 记录 `$COVER_PATH="$DIR/cover.png"`、`$COVER_MEDIA_ID`、`$COVER_CDN_URL`（供步骤 7/8/10 使用）。
-8. **原子写 `$DIR/cover-prompt.md`**（先写 `$DIR/.cover-prompt.md.tmp` → `fsync` → `rename` 覆盖）：完整记录封面生成决策，内容必须含：公众号比例 `2.35:1`、账号视觉风格来源（`$VISUAL_STYLE`/`$COLOR_PALETTE`/`$MOOD` 及 `$VISUAL_STYLE_SOURCE`，配置锚点为空时附三维分析依据：账号定位/内容主题/受众）、文章核心隐喻、`required_entities`、最终使用的 prompt、vision 校验 prompt 与结果（passed/score/missing_entities）。
+   - `size="21:9"` 是生成提示比（Volcengine 支持的最近比）；**服务端按 `platform=article + image_type=cover` 把成品精确裁到 900×383 并像素断言**——微信零裁剪，告别「需要手动裁剪的纯图」。
+3. 校验不过 → 按 `sharper_prompt_hint` 锐化 prompt 重试，最多 3 次；仍不过请求用户协助。**封面必须 vision 校验通过后才可作为 `thumb_media_id`**；未通过 vision 的封面不得用于发布。
+4. 从返回值取 `media_id`（发布草稿的 thumb）+ `wechat_url`（`$COVER_CDN_URL`，**仅供 thumb_media_id 来源识别**，不得复用为正文 `<img src>`）。**不再单独调用 `upload_image`**。若返回 `upload_error`（生成成功但上传失败），用 `upload_image(file_path="$DIR/cover.png")` 单独重传即可，**无需重新生成**。
+5. 记录 `$COVER_PATH="$DIR/cover.png"`、`$COVER_MEDIA_ID`、`$COVER_CDN_URL`（供步骤 7/8/10 使用）。
+6. **原子写 `$DIR/cover-prompt.md`**（先写 `$DIR/.cover-prompt.md.tmp` → `fsync` → `rename` 覆盖）：完整记录封面生成决策（比例 900×383、账号视觉风格来源、核心隐喻、`required_entities`、最终 prompt、vision 6 维评分卡结果）——模板见 `skills/article-cover-design/SKILL.md`。
+
+详细推导链、6 维评分卡模板、迭代策略见 `skills/article-cover-design/SKILL.md`；三维风格方向参考见 `skills/article-visual-design/references/cover.md`。
 
 #### 6e：创建配图内容规划（升级 schema）
 
@@ -241,6 +242,7 @@ using the article-publishing skill 创建 `draft.json` 并发布：
 - `content`：步骤 8 的 HTML
 - `digest`：步骤 5 优化后的摘要
 - `thumb_media_id`：步骤 6 的封面 `media_id`
+- `author`：**仅**取自步骤 1 `get_project_profile` 顶层 `author`（公众号署名，原样填入；空则省略，**禁用** `template_writing_style` 顶替——见 article-publishing skill「作者字段来源」）
 
 仅当 `$DIR/final-review.md` 所有硬性项通过时，调用 `publish_draft` 发布到草稿箱。产出：
 - `$DIR/draft.json`
