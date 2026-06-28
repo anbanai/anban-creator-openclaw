@@ -93,7 +93,7 @@ writing_prompt: |
   避免废话，直击要点。
 ```
 
-> **注意**：writer YAML / 项目写作风格只定义**文字风格**，不再包含 `cover_prompt`/`cover_style`/`cover_mood`/`cover_color_scheme` 等封面/视觉字段。图片视觉是与写作风格正交的独立维度，由项目/模板/计划/任务各自的 `style`（视觉）字段承载，在任务创建时按 `task > template > plan > project` 解析。详见 `article-visual-design` skill。
+> **注意**：writer YAML / 项目写作风格只定义**文字风格**，不再包含 `cover_prompt`/`cover_style`/`cover_mood`/`cover_color_scheme` 等封面/视觉字段。图片视觉是与写作风格正交的独立维度，由项目/任务各自的 `visual_style`字段承载，在任务创建时按 `task > project` 解析。详见 `article-visual-design` skill。
 
 ---
 

@@ -28,7 +28,7 @@ user-invocable: false
 | 不与微信叠加标题重复 | 纯图无文字/水印/logo | 评分卡 `hard_no_text_watermark`（硬维度） |
 | 缩略图 0.5 秒抓眼球（CTR） | 主体大、高对比、强焦点 | 评分卡 `subject_thumbnail_readability` |
 | 一眼传达主题 | 视觉概念 = 文章核心论点/最强隐喻的具象化 | 评分卡 `content_metaphor_relevance` + `required_entities` |
-| 品牌调性统一 | 视觉风格 = `get_project_profile` 的 `style`（配置优先） | 评分卡 `style_consistency` |
+| 品牌调性统一 | 视觉风格 = `get_project_profile` 的 `visual_style`（配置优先） | 评分卡 `style_consistency` |
 | 视觉质感达标 | 摄影级/绘画级；禁 3D 合成/卡通/纯色底/对称 PPT | 评分卡 `composition_quality` |
 
 ---
@@ -39,7 +39,7 @@ user-invocable: false
 
 1. 读 `$DIR/04-article-final.md`，提取**核心论点**与**最强视觉隐喻**（文章已有的比喻/意象/案例/场景）。
 2. 取视觉锚点 `$VISUAL_STYLE`：
-   - `get_project_profile` 的 `style` 非空 → 以它为**权威锚点**，三维分析只做**细化**（配色/情绪/构图），不得偏离。
+   - `get_project_profile` 的 `visual_style` 非空 → 以它为**权威锚点**，三维分析只做**细化**（配色/情绪/构图），不得偏离。
    - 为空 → 按账号定位 + 内容主题 + 受众三维分析兜底（方向见下方「三维方向参考」）。
    - **绝不**从 writer YAML 推视觉（writer 只管文字；切断 dan-koe→维多利亚版画 bug）。
 3. 合成封面概念：`{VISUAL_STYLE} × {COLOR_PALETTE} × {内容隐喻具象} × {宽银幕叙事构图 + 主体居中安全区}`。
@@ -123,7 +123,7 @@ generate_image(
 封面构建完成后，**原子写入 `$DIR/cover-prompt.md`**（先写 `$DIR/.cover-prompt.md.tmp` → `fsync` → `rename` 覆盖），完整记录封面决策，便于复盘与风格漂移排查。内容必须含：
 
 - **比例**：公众号 2.35:1（900×383px 标准；服务端强制裁剪）。
-- **账号视觉风格来源**：`$VISUAL_STYLE` / `$COLOR_PALETTE` / `$MOOD` + 三维分析依据（账号定位/内容主题/受众），或配置锚点来源（`style_source`）。
+- **账号视觉风格来源**：`$VISUAL_STYLE` / `$COLOR_PALETTE` / `$MOOD` + 三维分析依据（账号定位/内容主题/受众），或配置锚点来源（`visual_style_source`）。
 - **文章核心隐喻**：封面要表达的最强视觉隐喻。
 - **`required_entities`**：封面必须出现的具体物体列表。
 - **最终 prompt**：实际传给 `generate_image` 的完整 prompt。
@@ -135,7 +135,7 @@ generate_image(
 
 ---
 
-## 三维方向参考（仅 `style` 为空时兜底）
+## 三维方向参考（仅 `visual_style` 为空时兜底）
 
 | 账号领域 | 视觉方向 | 典型色彩 |
 |----------|----------|----------|

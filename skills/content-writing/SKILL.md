@@ -12,7 +12,6 @@ user-invocable: false
 |----------|------|
 | `write_article` | server 端调用 LLM，按写作风格生成文章 |
 | `convert_markdown` | server 端调用 LLM 转换 Markdown 为 WeChat HTML |
-| `humanize_article` | server 端调用 LLM 去除 AI 痕迹 |
 
 ---
 
@@ -36,7 +35,7 @@ user-invocable: false
 
 ## AI 去痕参考
 
-详见 [humanizer.md](references/humanizer.md)
+去 AI 味改写**就地使用 `humanizer` skill**（33 类 AI 写作模式 + draft→audit→final 流程，由写作流程在 agent 内就地改写、不调用 MCP 工具、不计费）。中文等价映射与人味特征详见 `humanizer` skill。
 
 ## 写作指南
 
@@ -75,4 +74,4 @@ user-invocable: false
 
 - 风格写作：调用 `write_article` MCP 工具
 - Markdown 转微信 HTML：调用 `convert_markdown` MCP 工具
-- AI 去痕：调用 `humanize_article` MCP 工具
+- AI 去痕：**using the `humanizer` skill** 就地改写（不调用 MCP 工具、不计费）

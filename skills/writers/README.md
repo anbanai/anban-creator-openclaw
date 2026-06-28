@@ -77,7 +77,7 @@ writing_prompt: |
 
 ---
 
-> **关于封面/视觉**：项目写作风格（writer）**不再携带任何视觉身份**（曾经的 `cover_prompt`/`cover_style`/`cover_mood` 字段已移除）。图片视觉是与写作风格**正交**的独立维度，由项目/模板/计划/任务各自的 `style`（视觉）字段承载，在任务创建时按 `task > template > plan > project` 解析。这样切断了"writer key 泄漏为图片风格"的 bug（如 dan-koe → 维多利亚木刻）。封面/配图的视觉风格来源详见 `article-visual-design` skill。
+> **关于封面/视觉**：项目写作风格（writer）**不再携带任何视觉身份**（曾经的 `cover_prompt`/`cover_style`/`cover_mood` 字段已移除）。图片视觉是与写作风格**正交**的独立维度，由项目/任务各自的 `visual_style`字段承载，在任务创建时按 `task > project` 解析。这样切断了"writer key 泄漏为图片风格"的 bug（如 dan-koe → 维多利亚木刻）。封面/配图的视觉风格来源详见 `article-visual-design` skill。
 
 ---
 
