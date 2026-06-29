@@ -32,7 +32,7 @@ user-invocable: true
 
 **项目选定后，仅对 `$PROJECT_ID` 调用：**
 
-- `get_project_profile(project_id="$PROJECT_ID", scope="article", task_id="$TASK_ID")` → 获取账号定位、受众、风格维度。**同时解析视觉维度的权威来源**：`$VISUAL_STYLE_CONFIGURED` = profile 的 `visual_style` 字段、`$VISUAL_STYLE_SOURCE` = `visual_style_source`（task / project）。`task_id` 让服务端按任务级覆盖解析（`task > project` 两层），不传则只拿到 project 级信息。**务必区分两个易混字段**：顶层 `byline` 是公众号**署名**（步骤 10 发布时原样填入 `draft.json` 的 author，空则省略）；`writing_voice` 是**写作口吻**（驱动正文语气），`persona_avatar` 是人设头像；三者用途不同，**绝非署名、绝不混用**。
+- `get_project_profile(project_id="$PROJECT_ID", scope="article", task_id="$TASK_ID")` → 获取账号定位、受众、风格维度。**同时解析视觉维度的权威来源**：`$VISUAL_STYLE_CONFIGURED` = profile 的 `visual_style` 字段、`$VISUAL_STYLE_SOURCE` = `visual_style_source`（task / project）。`task_id` 让服务端按任务级覆盖解析（`task > project` 两层），不传则只拿到 project 级信息。**务必区分两个易混字段**：顶层 `author` 是公众号**署名**（步骤 10 发布时原样填入 `draft.json` 的 author，空则省略）；顶层 `writer` 是**写作风格资源 key**（驱动正文语气）。二者用途不同，**绝非署名、绝不混用**。写作风格头像/昵称只是 Studio 展示元数据，不会出现在 MCP profile 中。
 - `list_drafts(project_id="$PROJECT_ID")` 和 `list_published_articles(project_id="$PROJECT_ID")` → 已有文章标题（如返回错误可忽略，用空列表继续）
 - `prepare_workspace(content_type="articles", task_id=TASK_ID)` → 工作目录路径 `$DIR`
 - Bash 执行 `mkdir -p "$DIR"` 创建目录
@@ -67,7 +67,7 @@ using the article-visual-design skill 完成以下子步骤。详细规范见 `s
 
 #### 6a：选择文章类型模板（配置优先风格）
 
-公众号"模板"由三个**正交**维度组成：图片视觉（`visual_style`）、写作者（`writer_key`）、排版样式（`theme`）。三者各自独立解析，互不推导——**写作风格绝不决定图片视觉**。
+公众号"模板"由三个**正交**维度组成：图片视觉（`visual_style`）、写作者（`writer`）、排版样式（`theme`）。三者各自独立解析，互不推导——**写作风格绝不决定图片视觉**。
 
 读取 `$DIR/03-article.md`（或 `04-article-final.md`），根据结构特征匹配模板（自动决策，不询问用户）：
 
@@ -244,7 +244,7 @@ using the article-publishing skill 创建 `draft.json` 并发布：
 - `content`：步骤 8 的 HTML
 - `digest`：步骤 5 优化后的摘要
 - `thumb_media_id`：步骤 6 的封面 `media_id`
-- `author`：**仅**取自步骤 1 `get_project_profile` 顶层 `byline`（公众号署名，原样填入 `draft.json` 的 `author` 键；空则省略，**禁用** `writing_voice` 顶替——见 article-publishing skill「作者字段来源」）
+- `author`：**仅**取自步骤 1 `get_project_profile` 顶层 `author`（公众号署名，原样填入 `draft.json` 的 `author` 键；空则省略，**禁用** `writer` 顶替——见 article-publishing skill「作者字段来源」）
 
 仅当 `$DIR/final-review.md` 所有硬性项通过时，调用 `publish_draft` 发布到草稿箱。产出：
 - `$DIR/draft.json`
