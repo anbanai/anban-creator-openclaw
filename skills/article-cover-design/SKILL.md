@@ -6,6 +6,19 @@ user-invocable: false
 
 # 公众号封面图设计（效果与用途保障方法论）
 
+## 跳过条件（图片开关：封面关）
+
+公众号文章的封面可由用户在创建任务/计划时关闭。当用户 prompt 含「禁止生成封面」或「禁止生成任何图片」（封面关·配图开 / 两关纯文字 两种组合）时，**整个本 skill 跳过**：
+
+- 不调 `generate_image`、不生成 `$DIR/cover.png`、不写 `cover-prompt.md`、不取 `media_id`/`wechat_url`。
+- 节奏规划 `visual-rhythm-plan.md` 的 hero slot `image_url=null`。
+- 发布草稿（`article-publishing` skill）**不带 `thumb_media_id`**——即使有正文配图也**不复用**作封面。
+- 两关（纯文字）时，在 `final-review.md` 记录「未生成封面，公众号后台可能不显示封面/需手动设置」。
+
+无上述禁令（默认/封面开）→ 正常执行下文全流程。
+
+---
+
 本 skill 是公众号文章封面（`thumb_media_id`）的**唯一权威设计入口**，也是全篇内容配图的**风格锚点**（产物 `$DIR/cover.png` 供后续内容图 `ref_image_path` 继承）。它不是「随便生成一张横图」，而是一套多层方法论，确保封面达成：订阅号列表抓眼球（CTR）、转发卡主体完整、微信零裁剪、一眼传达主题、品牌调性统一。
 
 ## 核心规格（写死，不可改）
