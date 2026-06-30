@@ -158,13 +158,14 @@ generate_image(
   output_path="$DIR/img_N.png",
   task_id=$TASK_ID,
   ref_image_path=<封面开关开启时 "$DIR/cover.png"；封面关时省略或链到首张已生成图>,
+  size=<按 slot 固定：section_opener/信息图用 "4:3"，inline_detail 用 "1:1">,
   verify_with_vision=true,
   verification_prompt=<vision 校验 prompt>,
   upload_to_cdn=true
 )
 ```
 
-**关键**：封面+配图均开启时，`ref_image_path` 用 `$DIR/cover.png`（**风格锚点/参考输入，不是把封面图当作正文图复用**）；封面关·配图开时不传 `ref_image_path` 或链到首张已生成图，严禁指向不存在的 `$DIR/cover.png`。每张正文图的 `<img src>` 必须是**该图独立生成并上 CDN 后得到的 `wechat_url`**——**严禁**把封面 `$COVER_CDN_URL` 直接填入正文任何 `<img src>`，也**严禁**多张正文图共用同一个 `wechat_url`；否则会触发服务端"正文全图相同"硬拦截导致发布失败。**不再有独立的批量 `upload_image` 阶段**——每张图生成的瞬间即上 CDN。
+**关键**：公众号正文配图不依赖项目级/任务级 image ratio；每次 `generate_image` 必须显式传 `size`（section_opener/信息图用 `size="4:3"`，inline_detail 用 `size="1:1"`）。封面+配图均开启时，`ref_image_path` 用 `$DIR/cover.png`（**风格锚点/参考输入，不是把封面图当作正文图复用**）；封面关·配图开时不传 `ref_image_path` 或链到首张已生成图，严禁指向不存在的 `$DIR/cover.png`。每张正文图的 `<img src>` 必须是**该图独立生成并上 CDN 后得到的 `wechat_url`**——**严禁**把封面 `$COVER_CDN_URL` 直接填入正文任何 `<img src>`，也**严禁**多张正文图共用同一个 `wechat_url`；否则会触发服务端"正文全图相同"硬拦截导致发布失败。**不再有独立的批量 `upload_image` 阶段**——每张图生成的瞬间即上 CDN。
 
 #### 7b：vision 校验与失败重试
 
@@ -235,10 +236,10 @@ render_template(
 
 ### 步骤 9：发布前总验收
 
-创建 `$DIR/final-review.md`，汇总并判定以下硬性项：
+创建 `$DIR/final-review.md`，汇总并判定以下硬性项（**图片开关守卫**：封面/配图相关项在对应开关关闭时跳过且不计为失败；纯文字文章时额外记录「未生成封面，公众号后台可能不显示封面/需手动设置」）：
 - 内容质量：文章贴合用户需求、账号定位和上下文
-- **模板与节奏**：`visual-rhythm-plan.md` 存在；所选模板的 rhythm 规则被遵守；每个 `##` 章节映射到 slot；`layout_plan` JSON 块的所有 `image_url` 已用 CDN URL 回填
-- **配图内容贴切**：`image-plan.md` 每张图含 `visual_brief` + `required_entities` + `must_match_excerpts`；`images.json` 中至少 80% 的内容图 `verification.passed=true`
+- **模板与节奏**：`visual-rhythm-plan.md` 存在；所选模板的 rhythm 规则被遵守；每个 `##` 章节映射到 slot；封面/配图开启时 `layout_plan` JSON 块的对应 `image_url` 已用 CDN URL 回填（关闭时对应 slot `image_url=null`）
+- **配图内容贴切**（仅正文配图开启时）：`image-plan.md` 每张图含 `visual_brief` + `required_entities` + `must_match_excerpts`；`images.json` 中至少 80% 的内容图 `verification.passed=true`
 - 视觉一致性（封面开关开启时）：封面存在且已上传获得 `media_id`；封面+配图均开启时所有内容图 `ref_image_path="$DIR/cover.png"`；封面关·配图开时内容图不传 `ref_image_path` 或链首图
 - SEO：`seo-result.md` 包含优化后的标题和摘要
 - 合规：违禁词和平台合规检查无高风险未处理项
@@ -272,7 +273,7 @@ using the article-publishing skill 创建 `draft.json` 并发布：
 | **视觉模板** | 根据文章结构特征自动选 `templates/article/*.yaml`（listicle / tutorial / story-narrative / long-form-essay），模板定义节奏、配图数量、layout module |
 | **视觉节奏** | 模板选定后，自动把每个 `##` 映射到 slot（hero / section_opener / inline_detail / footer），写入 `visual-rhythm-plan.md` |
 | **配图内容贴切** | 每张图提取 `visual_brief` + `required_entities` + `must_match_excerpts`，生成后强制 vision 校验，失败锐化 prompt 重试 |
-| **视觉风格** | **配置优先**：优先取自任务解析的 `visual_style` 字段（`get_project_profile` 的 `visual_style`/`visual_style_source`，按 `task > project` 解析）；配置为空时由账号定位+内容主题+受众三维分析兜底；**不使用 writer YAML 的 `cover_style`/`cover_prompt`**（writer 仅决定文字风格）。配图通过 `ref_image_path="$DIR/cover.png"` 保持一致 |
+| **视觉风格** | **配置优先**：优先取自任务解析的 `visual_style` 字段（`get_project_profile` 的 `visual_style`/`visual_style_source`，按 `task > project` 解析）；配置为空时由账号定位+内容主题+受众三维分析兜底；**不使用 writer YAML 的 `cover_style`/`cover_prompt`**（writer 仅决定文字风格）。封面+配图均开启时配图通过 `ref_image_path="$DIR/cover.png"` 保持一致；封面关·配图开时不传 `ref_image_path` 或链首图 |
 | **HTML 渲染** | 用 `render_template`（带 `layout_plan`）确定性渲染，不再用 `convert_markdown` 自由发挥 |
 | **SEO 优化** | 自动提取关键词，生成标题/摘要/标签，结果用于草稿发布 |
 | **AI 去痕** | 自动检测并移除 AI 写作模式（33 类，详见 `humanizer` skill） |
