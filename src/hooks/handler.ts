@@ -86,8 +86,10 @@ function summarizeArticleDelivery(
   // Mirrors the claudecode plugin's render_template / vision / image-dedup
   // checks but as soft warnings.
   const renderWarn = renderTemplateWarning(archivePath);
-  const visionWarn = visionPassRateWarning(archivePath);
-  const dedupWarn = imageUrlDedupWarning(archivePath);
+  const hasContentImages = hasFile(archivePath, "images.json");
+  const hasCover = hasFile(archivePath, "cover.png");
+  const visionWarn = hasContentImages ? visionPassRateWarning(archivePath) : null;
+  const dedupWarn = hasContentImages ? imageUrlDedupWarning(archivePath) : null;
   const warningBlock =
     renderWarn || visionWarn || dedupWarn
       ? [
@@ -114,17 +116,17 @@ function summarizeArticleDelivery(
     "- `03-article.md` — 文章初稿",
     "- `04-article-final.md` — 最终稿（去AI痕迹、合规检查）",
     "- `05-article.html` — 微信 HTML 格式",
-    "- `cover.png` — 封面图",
-    "- `images.json` — 配图 CDN 链接（含 vision 校验记录）",
+    hasCover ? "- `cover.png` — 封面图" : "- `cover.png` — 封面图（封面开关关闭时可不存在）",
+    hasContentImages ? "- `images.json` — 配图 CDN 链接（含 vision 校验记录）" : "- `images.json` — 配图记录（正文配图关闭时可不存在）",
     "- `draft.json` — 草稿信息",
     ``,
     `质量检查要点：`,
     `- 文章是否有 ≥3 个二级标题`,
-    `- 每个章节是否有配图`,
-    `- 封面图是否生成并上传成功`,
+    `- 每个章节是否有配图（仅正文配图开关开启时）`,
+    `- 封面图是否生成并上传成功（仅封面开关开启时）`,
     `- **\`05-article.html\` 是否由 \`render_template\` 生成**（非 \`convert_markdown\`）`,
-    `- **vision 校验通过率**（images.json 中 \`verification.passed\` 比例 ≥80%）`,
-    `- **正文图片是否存在全图相同 / 复用封面 URL**`,
+    `- **vision 校验通过率**（仅有 images.json 时检查 \`verification.passed\` 比例 ≥80%）`,
+    `- **正文图片是否存在全图相同 / 复用封面 URL**（仅正文配图开关开启时）`,
     `- 草稿是否创建成功`,
     ...warningBlock,
   ];

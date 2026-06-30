@@ -1,6 +1,6 @@
 ---
 name: article-cover-design
-description: 微信公众号封面图（公众号头图）专用设计——硬编码官方比例 900×383（2.35:1），中心安全区构图保证转发卡 1:1 主体完整，纯图无文字（微信自动叠加标题），从文章核心隐喻推导视觉概念，生成后 vision 6 维评分卡把关。用户提到「封面」「公众号封面」「头图」「cover」「封面设计」「封面图」时，或 article 流水线到达封面生成步骤时使用。
+description: 微信公众号封面图（公众号头图）专用设计——硬编码官方比例 900×383（2.35:1），中心安全区构图保证转发卡 1:1 主体完整，受控文字策略（按真实场景决定是否带短文字），从文章核心隐喻推导视觉概念，生成后 vision 6 维评分卡把关。用户提到「封面」「公众号封面」「头图」「cover」「封面设计」「封面图」时，或 article 流水线到达封面生成步骤时使用。
 user-invocable: false
 ---
 
@@ -8,7 +8,7 @@ user-invocable: false
 
 ## 跳过条件（图片开关：封面关）
 
-公众号文章的封面可由用户在创建任务/计划时关闭。当用户 prompt 含「禁止生成封面」或「禁止生成任何图片」（封面关·配图开 / 两关纯文字 两种组合）时，**整个本 skill 跳过**：
+公众号文章的封面可由用户在创建任务/计划时关闭。当结构化运行控制 `article_image_mode` 为 `content_only` 或 `text_only` 时，**整个本 skill 跳过**：
 
 - 不调 `generate_image`、不生成 `$DIR/cover.png`、不写 `cover-prompt.md`、不取 `media_id`/`wechat_url`。
 - 节奏规划 `visual-rhythm-plan.md` 的 hero slot `image_url=null`。
@@ -27,10 +27,10 @@ user-invocable: false
 |----|----|------|
 | 大图比例 | **2.35:1 = 900×383px** | 订阅号列表、文章详情页展示 |
 | 转发卡 | **1:1**（微信自动从封面**中心**裁切） | 群发通知、转发/分享卡片 |
-| 文字 | **纯图无文字**（不渲染标题/水印/logo） | 微信会自动在封面叠加文章标题 |
+| 文字 | **受控文字策略**（按场景决定是否带 2-8 个字短标题/关键词；禁止乱码/水印/logo） | 标题利益点强、教程/清单/杂志风可带短文字；普通真实场景/氛围图默认无字 |
 | 生成比 | `size="21:9"`（≈2.333:1，Volcengine 支持的最近比） | 服务端强制中心裁剪到精确 900×383 |
 
-**关键**：服务端 `generate_image` 对 `platform=article && image_type="cover"` 会把成品**精确裁剪到 900×383** 并做像素断言。因此你只负责「出一张宽银幕横图 + 主体居中 + 无文字」，最终比例由服务端兜底，微信**绝不会**再裁剪（告别「一张需要手动裁剪的纯图」）。
+**关键**：服务端 `generate_image` 对 `platform=article && image_type="cover"` 会把成品**精确裁剪到 900×383** 并做像素断言。因此你只负责「出一张宽银幕横图 + 主体居中 + 按受控文字策略决定是否带短文字」，最终比例由服务端兜底，微信**绝不会**再裁剪（告别「一张需要手动裁剪的纯图」）。
 
 ## 用途 ↔ 规则 ↔ 验证（方法论的纲）
 
@@ -38,7 +38,7 @@ user-invocable: false
 |----------|------------------|----------|
 | 微信零裁剪、列表/详情完整 | 精确 900×383 | 服务端像素断言（不可绕过） |
 | 转发卡 1:1 主体完整 | 主体置于**居中 1:1 安全区**（≈383×383），避开底部 20% | 评分卡 `safe_zone_centered` |
-| 不与微信叠加标题重复 | 纯图无文字/水印/logo | 评分卡 `hard_no_text_watermark`（硬维度） |
+| 避免低质文字干扰 | 按受控文字策略：需要时只放短文字；不需要时无字；始终禁止乱码/水印/logo/密集排版 | 评分卡 `text_policy_ok` + `hard_no_watermark_logo`（硬维度） |
 | 缩略图 0.5 秒抓眼球（CTR） | 主体大、高对比、强焦点 | 评分卡 `subject_thumbnail_readability` |
 | 一眼传达主题 | 视觉概念 = 文章核心论点/最强隐喻的具象化 | 评分卡 `content_metaphor_relevance` + `required_entities` |
 | 品牌调性统一 | 视觉风格 = `get_project_profile` 的 `visual_style`（配置优先） | 评分卡 `style_consistency` |
@@ -46,6 +46,15 @@ user-invocable: false
 
 ---
 
+## 受控文字策略
+
+封面不再一律纯图，也不能无脑加字。先判断真实场景与用户需求，再决定是否在图上生成文字：
+
+- **应考虑带短文字**：最终标题利益点很强、系列栏目需要识别、教程/清单/方法论需要关键词、杂志编辑风封面、用户 prompt 或项目视觉风格明确要求图中文字。
+- **默认无字**：真实场景摄影、氛围意象、人物/物件特写、自然/生活方式画面，以及模型不稳定时。
+- **文字约束**：仅 2-8 个中文字或 1 个短标签；必须大而清晰，位于安全区内，避开底部 20%；禁止乱码、伪文字、水印、logo、密集排版、长段落。
+- **prompt 要求**：带字时明确写出需要出现的精确文字；无字时写明 `NO text, NO watermark, NO logo`。
+- **vision 校验**：必须检查文字是否短、清晰、准确、无乱码；文字失败时优先改为无字封面或重试。
 ## 第一步：推导视觉概念（杜绝通用素材）
 
 封面**必须从文章内容推导**，不是随机图：
@@ -66,7 +75,7 @@ A cinematic 2.35:1 wide banner for a WeChat article cover. {VISUAL_STYLE}.
 {MOOD_TONE}. Main subject centered within the middle safe zone (works for both
 the 2.35:1 hero and the 1:1 forward-card crop), large and high-contrast for
 thumbnail readability, generous negative space, avoid the bottom 20% (WeChat
-overlays the article title there). Photographic quality, NO text, NO watermark,
+overlays the article title there). Photographic quality, {TEXT_POLICY: exact short Chinese text when needed, otherwise NO text}, NO watermark,
 NO logo.
 ```
 
@@ -75,7 +84,7 @@ NO logo.
 - **主体居中安全区**：主体落在画面中央 ≈383px 宽区域，确保转发卡 1:1 裁切后仍完整。
 - **避开底部 20%**：微信会在底部叠加标题，关键元素不放底部。
 - **缩略图可读**：主体要大、对比强，列表里缩成 ≈200px 仍能一眼识别。
-- **无文字**：prompt 里写死 `NO text, NO watermark, NO logo`。
+- **文字策略**：先按「受控文字策略」判断；需要文字时写出精确短文字，不需要文字时写死 `NO text, NO watermark, NO logo`。
 
 ## 第三步：构建 vision 6 维评分卡（生成前就绪）
 
@@ -91,10 +100,11 @@ NO logo.
   "content_metaphor_relevance": "...",     // 与文章核心论点/隐喻的语义相关度
   "style_consistency": "...",              // 是否与账号视觉风格锚点一致
   "composition_quality": "...",            // 摄影级质感，无合成/卡通/纯色底/对称 PPT
-  "hard_no_text_watermark": true/false,    // 硬性：无文字/水印/logo
+  "text_policy_ok": true/false,          // 文字策略是否正确：需要文字时短且清晰；不需要时无字；无乱码/伪文字
+  "hard_no_watermark_logo": true/false,  // 硬性：无水印/logo/密集排版
   "hard_aspect_ok": true/false,            // 硬性：宽银幕横版（非竖图/方图错比）
   "missing_or_forbidden": "...",           // 缺失实体或违禁元素（文字水印等）
-  "overall_pass": true/false,              // 所有 hard_* 为 true 且 4 个软维度≥medium 才 true
+  "overall_pass": true/false,              // text_policy_ok=true、所有 hard_* 为 true 且 4 个软维度≥medium 才 true
   "sharper_prompt_hint": "..."             // 不通过时的锐化建议
 }
 ```
@@ -128,7 +138,7 @@ generate_image(
   - 在 prompt 开头加 `MAIN SUBJECT: <具体物体>`，强化主体权重；
   - 把隐喻改得更具体（材质/颜色/方位/数量）；
   - 收紧「主体居中安全区 + 避开底部 20%」；
-  - 强化 `NO text, NO watermark, NO logo`。
+  - 按受控文字策略修正：文字乱码/过密则改为无字或缩短为精确短词；始终强化 `NO watermark, NO logo`。
 - 3 次仍不过 → **暂停并请求用户协助**，**不得**用未通过 vision 的封面发布。
 
 ## 第六步：落盘审计（cover-prompt.md，硬性）

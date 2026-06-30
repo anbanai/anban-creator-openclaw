@@ -16,6 +16,16 @@ user-invocable: true
 
 ---
 
+## 图片运行控制前置（硬性）
+
+公众号文章的封面图与正文配图由 user message 的结构化运行控制 `article_image_mode` 决定。若该键缺失，按 `cover_and_content` 兼容旧任务；不要扫描自然语言禁令来推断开关。所有质量标准、成功标准、发布前验证和失败判定都必须先判断图片模式：
+
+- `cover_and_content`：封面和正文配图都开启，按完整视觉流程执行。
+- `cover_only`：不得生成 `image-plan.md` / `images.json` / 正文 `<img>`；模板 `image_count.min` 不生效；不得把章节缺图、缺 `image-plan.md`、缺 `images.json` 判为失败。
+- `content_only`：不得生成 `cover.png` / `cover-prompt.md`；草稿不带 `thumb_media_id`；不得把缺封面或缺 `media_id` 判为失败；正文图不得把 `ref_image_path` 指向不存在的 `$DIR/cover.png`。
+- `text_only`：纯文字文章，不生成任何图片，`visual-rhythm-plan.md` 可存在但所有 `image_url=null`，草稿不带 `thumb_media_id`，`final-review.md` 记录「未生成封面，公众号后台可能不显示封面/需手动设置」。
+
+**仅在对应图片模式开启该产物时**，封面、正文配图、vision 校验、正文图片互不相同等图片相关要求才是硬性项；关闭时跳过且不计为失败。
 ## 必须执行的步骤
 
 按顺序执行以下步骤。每一步都必须调用对应的工具，不能跳过。
@@ -95,7 +105,7 @@ using the article-visual-design skill 完成以下子步骤。详细规范见 `s
 
 #### 6d：生成封面（委托 article-cover-design skill，生成与上传原子化）
 
-封面是全篇风格锚点。**封面设计已独立成稿**——using the `article-cover-design` skill：硬编码官方比例（900×383 / 2.35:1）、中心安全区构图（转发卡 1:1 兼容）、纯图无文字（微信自动叠加标题）、从文章核心隐喻推导视觉概念、vision 6 维评分卡把关。本步骤只交代与本流水线的衔接：
+封面是全篇风格锚点。**封面设计已独立成稿**——using the `article-cover-design` skill：硬编码官方比例（900×383 / 2.35:1）、中心安全区构图（转发卡 1:1 兼容）、受控文字策略（按真实场景决定是否带短文字）、从文章核心隐喻推导视觉概念、vision 6 维评分卡把关。本步骤只交代与本流水线的衔接：
 
 1. 从 `$DIR/04-article-final.md` 提取核心论点和最强视觉隐喻，交给 `article-cover-design` skill 推导视觉概念（绝不生成通用素材图）。
 2. 调用 `generate_image`（**`upload_to_cdn=true` 让生成与上传原子化**：同一调用内完成生成→裁剪→校验→压缩→上传微信 CDN，直接返回 `media_id` + `wechat_url`）：
@@ -147,14 +157,14 @@ generate_image(
   image_type="content",
   output_path="$DIR/img_N.png",
   task_id=$TASK_ID,
-  ref_image_path="$DIR/cover.png",
+  ref_image_path=<封面开关开启时 "$DIR/cover.png"；封面关时省略或链到首张已生成图>,
   verify_with_vision=true,
   verification_prompt=<vision 校验 prompt>,
   upload_to_cdn=true
 )
 ```
 
-**关键**：`ref_image_path` 始终用 `$DIR/cover.png`（**风格锚点/参考输入，不是把封面图当作正文图复用**）。每张正文图的 `<img src>` 必须是**该图独立生成并上 CDN 后得到的 `wechat_url`**——**严禁**把封面 `$COVER_CDN_URL` 直接填入正文任何 `<img src>`，也**严禁**多张正文图共用同一个 `wechat_url`；否则会触发服务端"正文全图相同"硬拦截导致发布失败。**不再有独立的批量 `upload_image` 阶段**——每张图生成的瞬间即上 CDN。
+**关键**：封面+配图均开启时，`ref_image_path` 用 `$DIR/cover.png`（**风格锚点/参考输入，不是把封面图当作正文图复用**）；封面关·配图开时不传 `ref_image_path` 或链到首张已生成图，严禁指向不存在的 `$DIR/cover.png`。每张正文图的 `<img src>` 必须是**该图独立生成并上 CDN 后得到的 `wechat_url`**——**严禁**把封面 `$COVER_CDN_URL` 直接填入正文任何 `<img src>`，也**严禁**多张正文图共用同一个 `wechat_url`；否则会触发服务端"正文全图相同"硬拦截导致发布失败。**不再有独立的批量 `upload_image` 阶段**——每张图生成的瞬间即上 CDN。
 
 #### 7b：vision 校验与失败重试
 
@@ -188,7 +198,7 @@ generate_image(
 - [ ] **节奏完整性**：`visual-rhythm-plan.md` 中每个 `##` 都映射到一个 slot
 - [ ] **模板一致性**：所选模板的 rhythm 规则被遵守（listicle 的 inline_detail 必须为空、tutorial 的 footer 必填等）
 - [ ] **文件完整性**：所有图片文件存在且可访问
-- [ ] **风格一致性**：`images.json` 中所有内容图 `ref_image_path="$DIR/cover.png"`
+- [ ] **风格一致性**：封面+配图均开启时，`images.json` 中所有内容图 `ref_image_path="$DIR/cover.png"`；封面关·配图开时无 `ref_image_path` 或链首图，且不得指向不存在的 `$DIR/cover.png`
 - [ ] **视觉多样性**：3+ 配图使用 3+ 种不同 `composition_type`（`listicle` 模板豁免）
 - [ ] **Vision 校验通过率**：至少 80% 的内容图 `verification.passed=true`
 - [ ] **审计完整性**：`images.json` 每条含 `visual_brief` / `required_entities` / `must_match_excerpts` / `verification` / `slot_id` / `section_index` / `wechat_url` / `media_id`
@@ -229,11 +239,11 @@ render_template(
 - 内容质量：文章贴合用户需求、账号定位和上下文
 - **模板与节奏**：`visual-rhythm-plan.md` 存在；所选模板的 rhythm 规则被遵守；每个 `##` 章节映射到 slot；`layout_plan` JSON 块的所有 `image_url` 已用 CDN URL 回填
 - **配图内容贴切**：`image-plan.md` 每张图含 `visual_brief` + `required_entities` + `must_match_excerpts`；`images.json` 中至少 80% 的内容图 `verification.passed=true`
-- 视觉一致性：封面存在且已上传获得 `media_id`；所有内容图 `ref_image_path="$DIR/cover.png"`
+- 视觉一致性（封面开关开启时）：封面存在且已上传获得 `media_id`；封面+配图均开启时所有内容图 `ref_image_path="$DIR/cover.png"`；封面关·配图开时内容图不传 `ref_image_path` 或链首图
 - SEO：`seo-result.md` 包含优化后的标题和摘要
 - 合规：违禁词和平台合规检查无高风险未处理项
 - HTML：`05-article.html` 由 `render_template` 生成（记录在 `final-review.md` 的 `render_audit` 段），图片链接有效，内容未超过平台限制
-- 草稿字段：title、digest、content、thumb_media_id 均可从前序产物读取
+- 草稿字段：title、digest、content 可从前序产物读取；`thumb_media_id` 仅封面开关开启时要求可读取
 
 **硬性闸门**：任一项失败时停止发布，记录失败原因和需要回退的步骤；不得调用 `publish_draft`。
 
@@ -243,7 +253,7 @@ using the article-publishing skill 创建 `draft.json` 并发布：
 - `title`：步骤 5 优化后的标题（从 `$DIR/seo-result.md` 读取）
 - `content`：步骤 8 的 HTML
 - `digest`：步骤 5 优化后的摘要
-- `thumb_media_id`：步骤 6 的封面 `media_id`
+- `thumb_media_id`：**仅当封面开关开启时**填步骤 6 的封面 `$COVER_MEDIA_ID`；封面开关关闭时一律不带 `thumb_media_id`，并在 `final-review.md` 记录提示
 - `author`：**仅**取自步骤 1 `get_project_profile` 顶层 `author`（公众号署名，原样填入 `draft.json` 的 `author` 键；空则省略，**禁用** `writer` 顶替——见 article-publishing skill「作者字段来源」）
 
 仅当 `$DIR/final-review.md` 所有硬性项通过时，调用 `publish_draft` 发布到草稿箱。产出：
@@ -273,7 +283,7 @@ using the article-publishing skill 创建 `draft.json` 并发布：
 - **禁止把封面 wechat_url 当作正文 img src**：封面 `$COVER_CDN_URL` 只能用于 `thumb_media_id`，正文每张图必须独立生成上 CDN。
 - **禁止多张正文图共用同一 wechat_url**：服务端 `publish_draft` 会硬拦截"正文 ≥2 图但唯一 URL==1"的草稿。
 - **正文全图相同时不得发布**：服务端发布前会做图片去重硬拦截；配图失败时宁可缺图降级，也不得用封面/他图顶替。
-- **封面必须 vision 校验通过**才可作为 `thumb_media_id`；未通过 vision 的封面不得用于发布。
+- **封面必须 vision 校验通过**才可作为 `thumb_media_id`（仅封面开关开启时）；未通过 vision 的封面不得用于发布。
 - **超过一半章节配图失败**：暂停流程，请求用户协助（不得用降级顶替方式强行凑齐）。
 - **Vision 校验通过率 < 80%**：回到步骤 6e 检查 prompt 构建逻辑，不得直接发布。
 - **HTML 主路径必须用 `render_template`**（带 `layout_plan`）；`convert_markdown` 仅作旧版 server 兼容降级，不得作主渲染路径。
@@ -293,12 +303,12 @@ using the article-publishing skill 创建 `draft.json` 并发布：
 - 有价值、有见地、语言自然
 - **模板驱动节奏**（硬性要求）：从 `templates/article/*.yaml` 加载模板，不得临时编造节奏
 - **节奏规划完整**（硬性要求）：`visual-rhythm-plan.md` 存在且每个 `##` 都映射到 slot
-- 封面图必须成功生成并上传（硬性要求），**vision 校验通过**
+- 封面图必须成功生成并上传（硬性要求，**仅封面开关开启时**），**vision 校验通过**
 - **配置优先风格匹配**（硬性要求）：`$VISUAL_STYLE` 优先取自 `get_project_profile` 的 `visual_style` 字段，配置为空时三维分析兜底；不使用 writer YAML 的 `cover_style`/`cover_prompt`
 - **配图内容贴切**（硬性要求）：`image-plan.md` 每张图含 `visual_brief` + `required_entities` + `must_match_excerpts`，prompt 必须引用章节具体物体/比喻/案例（非通用描述）
 - **Vision 校验闭环**（硬性要求）：每张内容图经过 `verify_with_vision`（或单独 `analyze_image`）校验；至少 80% `verification.passed=true`
-- **参考链一致**（硬性要求）：所有内容配图使用 `ref_image_path="$DIR/cover.png"` 保持视觉一致
-- **图文并茂**（硬性要求）：每个 `##` 章节至少一张配图（按模板 rhythm 规则）
+- **参考链一致**（硬性要求，**仅封面+配图均开启时**）：所有内容配图使用 `ref_image_path="$DIR/cover.png"` 保持视觉一致；封面关·配图开时不传或链首图
+- **正文配图开启时的图文并茂**：正文配图开启时，每个 `##` 章节至少一张配图（按模板 rhythm 规则）；正文配图关闭时不得判失败
 - **视觉多样性**（硬性要求）：3 张以上配图时使用 3 种以上不同构图类型（`listicle` 模板可豁免）
 - **结构化渲染**（硬性要求）：HTML 由 `render_template`（带 `layout_plan`）生成，不得用 `convert_markdown` 自由发挥
 - **正文图片互不相同**（硬性要求）：所有正文内容图 `wechat_url` 两两不同，且无一张复用封面 `$COVER_CDN_URL`
@@ -347,7 +357,7 @@ using the article-publishing skill 创建 `draft.json` 并发布：
 - [ ] `$DIR/cover-prompt.md` 存在，含 `2.35:1` 比例、视觉风格来源（配置锚点优先）、核心隐喻、`required_entities`、vision 校验结果
 - [ ] `image-plan.md` 存在，每张图含 `slot_id` + `section_index` + `chapter_title` + `core_point` + `composition_type` + `source_excerpt` + **`visual_brief` + `required_entities` + `must_match_excerpts`** + `prompt_strategy`
 - [ ] `images.json` 每条记录含 `slot_id` + `section_index` + `chapter_title` + `composition_type` + **`visual_brief` + `required_entities` + `must_match_excerpts`** + `prompt` + **`verification`** + `ref_image_path` + `image_type` + `quality_status`
-- [ ] 所有内容配图使用了 `ref_image_path="$DIR/cover.png"` 生成并记录
+- [ ] 封面+配图均开启时，所有内容配图使用了 `ref_image_path="$DIR/cover.png"` 生成并记录；封面关·配图开时所有内容图未指向不存在的 `$DIR/cover.png`
 - [ ] 所有正文内容图的 `wechat_url` 两两不同，且无一张复用封面 `$COVER_CDN_URL`
 - [ ] **至少 80% 的内容图 `verification.passed=true`**
 - [ ] `04-article-final.md` 中每个 `##` 章节都有 CDN 图片链接（按模板 rhythm 规则）
@@ -397,7 +407,7 @@ using the article-publishing skill 创建 `draft.json` 并发布：
 2. **视觉风格配置优先**：`$VISUAL_STYLE` 优先取自 `get_project_profile` 的 `visual_style` 字段（配置锚点），配置为空时由三维分析兜底；不使用 writer YAML 的 cover_style/cover_prompt
 3. **配图内容三件套**：每张图必须有 `visual_brief`（具体画面）+ `required_entities`（必须物体）+ `must_match_excerpts`（章节原句）——这是 vision 校验的前提
 4. **vision 校验闭环**：每张图生成后必须用 `verify_with_vision`（或单独 `analyze_image`）校验，失败锐化 prompt 重试，最多 3 次
-5. **参考链保持风格一致**：所有内容配图使用 `ref_image_path="$DIR/cover.png"`（始终用封面，防止风格漂移）
+5. **参考链保持风格一致**：封面+配图均开启时，所有内容配图使用 `ref_image_path="$DIR/cover.png"`（用封面防止风格漂移）；封面关·配图开时不传 `ref_image_path` 或链首图，严禁指向不存在的 `$DIR/cover.png`
 6. **结构化 HTML 渲染**：步骤 8 用 `render_template`（带 `layout_plan`）确定性渲染，不用 `convert_markdown` 自由发挥
 7. **正文图片各自独立**：每张正文图独立生成上 CDN，严禁复用封面 URL 或多图共用同一 URL
 8. **审计记录可复盘**：`images.json` 必须记录 `verification`、`required_entities`、`slot_id`、`composition_type`、`chapter_title` 等字段
@@ -425,7 +435,7 @@ using the article-publishing skill 创建 `draft.json` 并发布：
 - [ ] **`visual_brief` 是抽象描述**（"商务场景"、"科技感"）→ 重写为具体画面
 - [ ] **`required_entities` 是抽象词**（"美感"、"氛围"）→ 重写为可识别的物体
 - [ ] **`must_match_excerpts` 是论点而非原句** → 从章节中摘真实段落
-- [ ] 内容配图未使用 `ref_image_path="$DIR/cover.png"` → 风格不一致风险
+- [ ] 封面+配图均开启时，内容配图未使用 `ref_image_path="$DIR/cover.png"` → 风格不一致风险；封面关·配图开时，内容配图指向不存在的 `$DIR/cover.png` → 必须移除或链到首张已生成图
 - [ ] **正文 `<img src>` 出现封面 `$COVER_CDN_URL`，或多张正文图共用同一 `wechat_url`** → 服务端 `publish_draft` 会拒绝发布；回步骤 7 为缺失 slot 独立生成，不得用封面/他图顶替
 - [ ] **`$DIR/cover-prompt.md` 缺失** → 步骤 6d 第 8 步必须原子写入
 - [ ] `images.json` 缺少 `verification` 字段 → vision 校验未执行，回步骤 7b
