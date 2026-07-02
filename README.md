@@ -67,7 +67,7 @@ export ANBAN_API_URL="https://api.creator.anbanai.com"
 /anban-setup
 ```
 
-`/anban-setup` 会检查 API Key、MCP 服务连接和当前账号下的项目可用性。
+`/anban-setup` 会自动准备本地视频工具，并检查 API Key、MCP 服务连接和当前账号下的项目可用性。
 
 ## 6. 重启 OpenClaw
 
