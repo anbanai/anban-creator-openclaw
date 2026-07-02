@@ -2,7 +2,7 @@
   "id": "anbanwriter",
   "name": "案板创作助手",
   "description": "WeChat & Seednote AI content creation suite — writing, visual design, multi-platform publishing",
-  "version": "2.7.1",
+  "version": "2.7.2",
   "enabledByDefault": true,
   "configSchema": {
     "type": "object",
