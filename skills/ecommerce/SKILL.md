@@ -81,7 +81,7 @@ user-invocable: true
 
 调用 `get_project_profile(project_id="$PROJECT_ID", scope="ecommerce", task_id="$TASK_ID")` 获取品牌定位、受众、关键词、参考图/风格描述、**已解析的 `image_model{provider,model,key}`** 与 `consistency_audit:true`。**`task_id` 必传**：服务端用任务派生的模板风格覆盖 project 默认风格（`visual_style_source="task"`），`image_model` 也由 `task.ImageModelKey` 解析。
 
-**产品图发现 → `$PRODUCT_PHOTOS`**：服务端把上传的产品图下载到 `$DIR/.anbanwriter/products/`（=`get_project_profile` 的 `ecommerce.product_photo_dir`），并写 `index.json`（JSON 数组，元素为 `product_NN.<ext>`）；读 `index.json` 拼路径得到 `$PRODUCT_PHOTOS`（用于 `analyze_image` 与参考图），期望数见 `product_photo_count`。其余任务输入：`selected_modules`、`target_platform`、`selling_points`（可选）、`visual_style`、语言。**`index.json` 缺失或产品图全无可访问 → 停止并请求用户上传产品图。** 逐张验证可访问；任一不可访问记录并降级（剔除后继续，至少保留 1 张）。
+**产品图发现 → `$PRODUCT_PHOTOS`**：服务端把上传的产品图下载到 `$DIR/.anban-creator/products/`（=`get_project_profile` 的 `ecommerce.product_photo_dir`），并写 `index.json`（JSON 数组，元素为 `product_NN.<ext>`）；读 `index.json` 拼路径得到 `$PRODUCT_PHOTOS`（用于 `analyze_image` 与参考图），期望数见 `product_photo_count`。其余任务输入：`selected_modules`、`target_platform`、`selling_points`（可选）、`visual_style`、语言。**`index.json` 缺失或产品图全无可访问 → 停止并请求用户上传产品图。** 逐张验证可访问；任一不可访问记录并降级（剔除后继续，至少保留 1 张）。
 
 ### 步骤 2：创建工作目录
 

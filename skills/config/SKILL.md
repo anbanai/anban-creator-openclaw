@@ -1,10 +1,10 @@
 ---
 name: config
-description: Initializes, views, and modifies anbanwriter configuration settings. Use when user wants to initialize, view, or modify anbanwriter configuration.
+description: Initializes, views, and modifies anban-creator configuration settings. Use when user wants to initialize, view, or modify anban-creator configuration.
 user-invocable: true
 ---
 
-# anbanwriter 配置管理
+# Anban Creator 配置管理
 
 ## 分步初始化配置（Agent 引导流程）
 

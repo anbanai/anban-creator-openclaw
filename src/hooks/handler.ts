@@ -3,9 +3,9 @@ import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 
 /**
- * Register quality verification and delivery summary hooks for anbanwriter.
+ * Register quality verification and delivery summary hooks for anban-creator.
  *
- * Listens for after_tool_call events from anbanwriter MCP tools and generates
+ * Listens for after_tool_call events from Anban Creator MCP tools and generates
  * structured delivery summaries and quality checks matching the claudecode
  * plugin's SubagentStop and TaskCompleted hooks.
  */
@@ -17,7 +17,7 @@ export function registerQualityHooks(api: OpenClawPluginApi): void {
 
     const result = handleToolComplete(toolName, toolInput, toolOutput);
     if (result && api.logger) {
-      api.logger.info(`[anbanwriter] hook fired: ${toolName} → ${result.substring(0, 50)}...`);
+      api.logger.info(`[anban-creator] hook fired: ${toolName} → ${result.substring(0, 50)}...`);
     }
   });
 }

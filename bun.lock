@@ -3,7 +3,8 @@
   "configVersion": 1,
   "workspaces": {
     "": {
-      "name": "anbanwriter-openclaw",
+      "name": "anban-creator-openclaw",
+      "version": "2.7.3",
       "devDependencies": {
         "@types/node": "^25.9.3",
         "typescript": "^5.8.0",

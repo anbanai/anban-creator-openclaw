@@ -34,8 +34,8 @@
 克隆插件仓库并安装：
 
 ```bash
-git clone https://github.com/anbanai/anbanwriter-openclaw.git
-cd anbanwriter-openclaw
+git clone https://github.com/anbanai/anban-creator-openclaw.git
+cd anban-creator-openclaw
 openclaw plugins install .
 ```
 
@@ -149,7 +149,7 @@ npm run lint     # 类型检查
 
 ## 其他版本
 
-- [Claude Code 插件](https://github.com/anbanai/anbanwriter-claudecode) — Claude Code Agent+Skill+MCP 插件版本
+- [Claude Code 插件](https://github.com/anbanai/anban-creator-claudecode) — Claude Code Agent+Skill+MCP 插件版本
 - [Web 管理端](https://creator.anbanai.com) — 在线管理后台，支持任务管理、积分充值等
 
 ## 加入社群

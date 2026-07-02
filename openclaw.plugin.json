@@ -1,8 +1,8 @@
 {
-  "id": "anbanwriter",
-  "name": "案板创作助手",
-  "description": "WeChat & Seednote AI content creation suite — writing, visual design, multi-platform publishing",
-  "version": "2.7.2",
+  "id": "anban",
+  "name": "Anban 智能创作助手",
+  "description": "Anban Creator plugin for WeChat, Seednote, video, ecommerce, and agent-assisted publishing workflows",
+  "version": "2.7.3",
   "enabledByDefault": true,
   "configSchema": {
     "type": "object",
@@ -11,7 +11,7 @@
   },
   "skills": ["skills"],
   "mcp": {
-    "anban": {
+    "creator": {
       "url": "${ANBAN_API_URL:-http://localhost:18060}/mcp",
       "transport": "streamable-http",
       "headers": {

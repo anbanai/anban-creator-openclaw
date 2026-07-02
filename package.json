@@ -1,6 +1,6 @@
 {
-  "name": "anbanwriter-openclaw",
-  "version": "2.7.0",
+  "name": "anban-creator-openclaw",
+  "version": "2.7.3",
   "description": "WeChat & Seednote AI content creation suite for OpenClaw",
   "type": "module",
   "main": "src/index.ts",
