@@ -1,6 +1,6 @@
 ---
 name: content-writing
-description: Writes articles with style guidance, removes AI traces, converts Markdown to WeChat HTML, and checks content compliance. Use when writing articles, removing AI traces, converting Markdown to WeChat HTML, or checking content compliance.
+description: Writes WeChat articles with server-side writer resources, removes AI traces, prepares content for render_template, and checks platform compliance. Use when writing article body content, de-AI rewriting, content quality review, compliance review, or when the article pipeline calls for writing/decontaminating article text.
 user-invocable: false
 ---
 
@@ -10,68 +10,84 @@ user-invocable: false
 
 | MCP 工具 | 说明 |
 |----------|------|
-| `write_article` | server 端调用 LLM，按写作风格生成文章 |
-| `convert_markdown` | server 端调用 LLM 转换 Markdown 为 WeChat HTML |
+| `write_article(project_id, topic, input_type?, article_type?, length?, task_id?)` | 服务端按已解析 writer resource 生成 Markdown 正文 |
+| `list_resources(category="writers")` | 发现可用写作风格资源 |
+| `get_resource(category="writers", name, include_raw?)` | 读取 writer metadata / 标题公式 / raw YAML |
+| `list_resources(category="layouts" / "article_templates")` | 发现排版模块与文章节奏模板 |
+| `get_resource(category="layouts" / "article_templates", name, include_raw?)` | 获取模块 schema、模板 rhythm、字段契约 |
+| `inspect_article(project_id, markdown, article_image_mode?, layout_plan?, cover_media_id?)` | 发布前只读预检 readiness / blockers / suggested fixes |
+| `render_template(project_id, markdown, layout_plan, theme?, task_id?)` | 主路径：按 `visual-rhythm-plan.md` 确定性渲染微信 HTML |
+| `convert_markdown(project_id, markdown, theme?, task_id?)` | 兼容旧 server 的降级路径；新流水线不得作为主路径 |
 
 ---
 
-## 写作风格
+## 写作职责边界
 
-写作风格由项目配置和服务端资源自动应用。调用 `write_article` 时传入项目和主题即可，不需要在插件目录读取本地 writer YAML 文件。
+content-writing 只负责正文质量，不负责图片生成和最终 HTML slot 规划。
 
-## 质量标准
+- writer 只决定文字风格、段落节奏、标题公式和语气，不携带视觉/封面风格。
+- 视觉风格来自 project/task 的 `visual_style`，文章模板来自 `article_templates`，排版样式来自 `theme`。
+- 写作时不插入图片占位符；配图由 `article-visual-design` 生成并回填到 `visual-rhythm-plan.md`。
+- HTML 主路径是 `render_template`，由服务端按 layout_plan 和 layout schema 确定性渲染。
 
-- **直接性**: 快速切入主题，避免冗长铺垫
-- **节奏感**: 句子长短交替，避免单调
-- **信任感**: 尊重读者智识，不过度解释
-- **真实性**: 听起来像人写的，不像机器生成
-- **精准性**: 无冗余内容，每句话都有价值
+## 写作流程
 
-## 配图说明
+1. 读取 `$DIR/context-brief.md`、`$DIR/02-outline.md` 和项目 profile。
+2. 调用 `write_article` 生成 `$DIR/03-article.md`。
+3. 使用 `humanizer` skill 就地改写，保存 `$DIR/04-article-final.md`。
+4. 执行违禁词和内容质量检查，输出 `$DIR/content-quality-report.md`。
+5. 后续由 article 流程调用 `inspect_article` 与 `render_template`。
 
-配图占位符由 `article-visual-design` skill 在文章定稿后专门设计并插入，写作步骤不需要处理配图。
+## 正文质量标准
 
-写作时应确保每个 `##` 章节有足够的实质性内容（具体的案例、比喻、场景描述等），为后续配图设计提供丰富的素材。
+- 每个 `##` 章节绑定 context-brief 中至少 1 个上下文锚点。
+- 每个章节包含具体素材：案例、场景、数据、人物、冲突、比喻或操作细节。
+- 前 100 字有清晰钩子，不用“今天给大家分享”式空开场。
+- 小标题可扫读，移动端段落短，长短句交替。
+- 有可摘出的判断句，但不堆空泛金句。
+- 结尾给具体行动或一个好回答的问题，不做违规诱导。
 
-## AI 去痕参考
+## AI 去痕
 
-去 AI 味改写**就地使用 `humanizer` skill**（33 类 AI 写作模式 + draft→audit→final 流程，由写作流程在 agent 内就地改写、不调用 MCP 工具、不计费）。中文等价映射与人味特征详见 `humanizer` skill。
+使用 `humanizer` skill 执行 draft → audit → final 流程：
 
-## 写作指南
+- 改写而非删除，保留信息点、段落数量级和作者意图。
+- 重点处理意义拔高、三段式套话、AI 高频词、空洞总结、连续排比、过度转折。
+- 不调用 MCP、不计费、无强度档位。
 
-详见 [writing-guide.md](references/writing-guide.md)
+## 合规检查
 
-## 平台内容合规
+词库详见 [prohibited-words.md](references/prohibited-words.md)。
 
-详见 [content-compliance.md](references/content-compliance.md)
+- 高风险：删除相关内容。
+- 中风险：替换为合规近义表达。
+- 低风险：替换、弱化或删除。
+- 禁止使用谐音字、拼音、特殊符号规避平台规则。
 
-## 违禁词合规检查
+报告格式：
 
-词库详见 [prohibited-words.md](references/prohibited-words.md)，涵盖微信平台违禁类和广告法违禁类。
-
-**检查流程**：
-1. **创作时**：主动规避词库中的高风险词汇，优先使用合规替代表述
-2. **完稿后**：对全文执行违禁词扫描，按优先级处理：
-   - 高风险（政治敏感/色情/暴力/赌博）：直接删除相关内容
-   - 中风险（广告法绝对化用语/虚假承诺/医疗夸大）：用词库中的合规替代词替换
-3. **禁止变相使用**：不得通过谐音字、拼音、特殊符号规避检查
-
-**报告格式**（完成检查后输出）：
-```
+```text
 违禁词检查报告：
 - [词汇] → 已替换为 [合规表述]（位置：第X段）
 - [词汇] → 已删除相关句子（位置：第X段）
 共处理 N 处违禁词，内容已达到平台合规标准。
 ```
 
-## 微信 HTML 规范
+## 渲染交接
 
-- 所有 CSS 必须内联（style 属性）
-- 禁止外部资源
-- 安全标签：section, p, span, strong, em, h1-h6, ul, ol, li, blockquote, pre, code, table, img, br, hr
+正文完成后不要直接调用 `convert_markdown`。
 
-## 相关工具
+正确交接路径：
 
-- 风格写作：调用 `write_article` MCP 工具
-- Markdown 转微信 HTML：调用 `convert_markdown` MCP 工具
-- AI 去痕：**using the `humanizer` skill** 就地改写（不调用 MCP 工具、不计费）
+1. `article-visual-design` 创建/回填 `$DIR/visual-rhythm-plan.md`。
+2. 调用 `inspect_article` 检查 layout_plan、图片模式和 draft blockers。
+3. 调用 `render_template`，保存 `$DIR/05-article.html`。
+4. 把 `slots_rendered` / `render_audit` 写入 `$DIR/final-review.md`。
+
+`convert_markdown` 只用于旧版 server 兼容降级；使用时必须在 final-review 中记录原因。
+
+## 深入参考
+
+- 写作工具参数：[writing-guide.md](references/writing-guide.md)
+- 内容合规规则：[content-compliance.md](references/content-compliance.md)
+- 违禁词：[prohibited-words.md](references/prohibited-words.md)
