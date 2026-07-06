@@ -24,6 +24,19 @@ user-invocable: true
 
 ```bash
 ANBAN_CLI=""
+ANBAN_DATA="${ANBAN_PLUGIN_DATA:-${CLAUDE_PLUGIN_DATA:-${PLUGIN_DATA:-}}}"
+for root in "$ANBAN_DATA"; do
+  [ -z "$root" ] && continue
+  if [ -x "$root/bin/anban" ]; then
+    ANBAN_CLI="$root/bin/anban"
+    break
+  fi
+  if [ -x "$root/bin/anban.exe" ]; then
+    ANBAN_CLI="$root/bin/anban.exe"
+    break
+  fi
+done
+
 for root in "${ANBAN_PLUGIN_ROOT:-}" "${CLAUDE_PLUGIN_ROOT:-}" "${PLUGIN_ROOT:-}"; do
   [ -z "$root" ] && continue
   if [ -x "$root/bin/anban" ]; then
@@ -40,7 +53,18 @@ if [ -z "$ANBAN_CLI" ]; then
   for root in "${ANBAN_PLUGIN_ROOT:-}" "${CLAUDE_PLUGIN_ROOT:-}" "${PLUGIN_ROOT:-}"; do
     [ -z "$root" ] && continue
     if [ -x "$root/scripts/bootstrap.sh" ]; then
-      ANBAN_PLUGIN_ROOT="$root" "$root/scripts/bootstrap.sh" >/dev/null 2>&1 || true
+      ANBAN_PLUGIN_ROOT="$root" CLAUDE_PLUGIN_DATA="$ANBAN_DATA" PLUGIN_DATA="$ANBAN_DATA" "$root/scripts/bootstrap.sh" >/dev/null 2>&1 || true
+      for bin_root in "$ANBAN_DATA" "$root"; do
+        [ -z "$bin_root" ] && continue
+        if [ -x "$bin_root/bin/anban" ]; then
+          ANBAN_CLI="$bin_root/bin/anban"
+          break 2
+        fi
+        if [ -x "$bin_root/bin/anban.exe" ]; then
+          ANBAN_CLI="$bin_root/bin/anban.exe"
+          break 2
+        fi
+      done
       if [ -x "$root/bin/anban" ]; then
         ANBAN_CLI="$root/bin/anban"
         break
