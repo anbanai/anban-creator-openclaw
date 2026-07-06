@@ -1,10 +1,10 @@
 ---
 name: topic-research
-description: Researches topics, scores engagement potential, and generates content outlines. Use when researching topics, scoring engagement potential, or generating content outlines.
-user-invocable: false
+description: Use when researching WeChat topics, selecting from a topic pool, checking historical duplication, scoring topic candidates, or generating article outlines.
 ---
 
-# 微信公众号选题分析工具
+# 微信公众号选题分析
+
 
 ## 案例库
 
@@ -19,62 +19,73 @@ user-invocable: false
 3. 业务默认比例只作兜底：微信文章封面/正文图默认 `16:9`；Seednote/XLS/移动信息流默认 `3:4`；电商、广告投放、视频封面按具体平台素材位要求执行。
 4. 不得从模型路由、供应商默认 `size` 或模型能力反推业务比例；模型只决定能力和成本，比例属于创作场景约束。
 
+## Intent Routing
 
-## MCP 工具
+Use this Skill for topic source selection, duplicate checks, candidate generation, candidate scoring, Top 1 choice, and outline creation. Topic research and outline writing happen inside the Skill; MCP is used only for controlled discovery such as topic pool, history, profile, and task progress.
 
-| MCP 工具 | 说明 |
-|----------|------|
-| `claim_topic` (project_id, task_id?) | 从选题池认领下一个未用选题（选题**首选来源**，池非空必用） |
-| `list_project_topics` (project_id) | 查看系统内已有选题（选题前必调） |
-| `research_topics` (project_id, keywords?, domain?, count?) | 选题研究 |
-| `score_article` (project_id, content, title?, domain?) | 话题评分 |
-| `generate_outline` (project_id, topic, template?, domain?, style?, keywords?) | 内容框架生成 |
-| `list_drafts` (project_id) | 查看已有草稿 |
-| `list_published_articles` (project_id) | 查看已发布文章 |
+## Discovery First
 
----
+1. Read the user prompt and decide whether a concrete topic was specified.
+2. Call `get_project_profile(project_id, scope="article", task_id?)` for positioning, keywords, audience, writer, theme, and task overrides.
+3. If the task did not specify a concrete topic, call `claim_topic(project_id, task_id?)` first.
+4. Always call `list_project_titles(project_id)`, `list_drafts(project_id)`, and `list_published_articles(project_id)` before finalizing a title or outline.
+5. Build an exclusion list from existing titles, draft titles, published titles, and close keyword variants.
 
-## 核心功能
+## Configuration Boundaries
 
-### 选题来源（优先选题池，最先执行）
+- A user-specified topic wins over the pool and must not consume the pool again.
+- A non-empty topic pool wins over Skill-generated candidates.
+- Project keywords guide candidate generation but are not themselves a topic.
+- History tools are the source of truth for duplication checks.
+- The Skill chooses structure and scoring rubric itself; do not delegate creative judgment to a generation MCP endpoint.
 
-选题前先确定本次选题，**不要凭空 research**。
+## Output Contract
 
-**如何判断任务是否已指定主题**（看 user prompt）：含 `create content about: <X>` → `<X>` 是指定主题；是 `research and create content ... choose the optimal theme` 这类让你自己选题的措辞 → 未指定；⚠️ 项目 keywords 不是主题。
+Write these file-backed artifacts:
 
-1. **任务已指定主题**（user prompt 含 `about: <X>`）→ **直接采用 `<X>`，禁止调 `claim_topic`**（避免与服务端预认领重复消费）。仍执行「0. 查看已有内容」查重（冲突则调整措辞），通过后跳到「2. 内容框架生成」。
-2. **未指定主题** → 先 `claim_topic(project_id="$PROJECT_ID", task_id="$TASK_ID")`：返回非空 `topic` → 采用，执行「0. 查看已有内容」后跳到「2. 内容框架生成」；返回 `null`（池空）→ 继续下方 0～1 的研究流程。
+1. `$DIR/01-research.md` with:
+   - topic source: user prompt / claimed pool item / Skill-generated candidate;
+   - existing titles and exclusion list;
+   - candidates, angles, audience fit, freshness, risk, and score;
+   - final Top 1 topic and reason.
+2. `$DIR/02-outline.md` with:
+   - final title;
+   - hook;
+   - `##` sections;
+   - each section's claim, context anchor, supporting material, and reader takeaway;
+   - CTA / ending direction;
+   - SEO seed keywords.
+3. `$DIR/context-brief.md` when the caller has not already created one, containing original user need, project positioning, historical avoidance, chosen topic reason, and section anchors.
 
-> 选题池是用户预置、希望优先消费的选题。只要池里有，就必须用池里的。
+## Candidate And Outline Protocol
 
-### 0. 查看已有内容（选题前必做）
+When the pool is empty, generate 5-10 candidates directly from project positioning, user intent, keywords, and historical gaps. Score each candidate on:
 
-在开始选题前，先检查已有内容，避免重复主题：
+- audience fit;
+- novelty against historical titles;
+- usefulness or emotional resonance;
+- concrete writing material available;
+- compliance and overclaiming risk;
+- title potential.
 
-调用 `list_project_topics(project_id)` 查看系统内已有选题列表。
+Pick the highest-scoring non-duplicate candidate. If all candidates collide with history, generate a second batch with a narrower angle or a different reader problem.
 
-调用 `list_drafts` 和 `list_published_articles` 查看已有内容。
+Outline templates are chosen internally:
 
-列出所有已有标题和选题后，选题应避开这些已有主题。
+| Template | Use When |
+|---|---|
+| authoritative | analysis, judgment, expert explanation |
+| comparison | choices, products, methods, tradeoffs |
+| cultural | story, history, people, values |
+| practical | tutorial, checklist, step-by-step action |
 
-### 1. 话题评分
+## Failure Handling
 
-评估话题的爆款潜力：
+- `claim_topic` returns an item but it duplicates history: keep the claimed topic, adjust the wording/angle, and record the change in `$DIR/01-research.md`.
+- History tools fail: record the failure and continue with an explicit risk note.
+- Candidate confidence is low: choose the least risky topic and add a "low confidence" note instead of blocking the whole task.
+- Outline lacks concrete anchors: return to research notes and add supporting material before writing `$DIR/02-outline.md`.
 
-调用 `score_article`，传入话题内容、标题和领域参数。
+## 深入参考
 
-### 2. 内容框架生成
-
-基于话题生成内容框架：
-
-调用 `generate_outline`，传入话题、模板、领域、风格和关键词参数。
-
-**可用模板**: authoritative(权威), comparison(对比), cultural(文化), practical(实用)
-**可用领域**: general, tea, tech, lifestyle, culture, business, education
-
-**模板详细说明**: 参见 [`references/outline-templates.md`](references/outline-templates.md)
-
-## 注意事项
-
-- 评分结果仅供参考，需结合实际情况判断
-- 建议结合多个话题进行对比分析
+- 大纲模板：[outline-templates.md](references/outline-templates.md)

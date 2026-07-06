@@ -1,10 +1,10 @@
 ---
 name: seo-optimization
-description: Optimizes titles, keywords, and article digests for WeChat search ranking. Use when optimizing titles, keywords, or writing article digests for search ranking.
-user-invocable: false
+description: Use when optimizing WeChat article titles, keywords, digests, CTR variants, or search-facing metadata.
 ---
 
 # 微信公众号 SEO 优化
+
 
 ## 案例库
 
@@ -19,91 +19,71 @@ user-invocable: false
 3. 业务默认比例只作兜底：微信文章封面/正文图默认 `16:9`；Seednote/XLS/移动信息流默认 `3:4`；电商、广告投放、视频封面按具体平台素材位要求执行。
 4. 不得从模型路由、供应商默认 `size` 或模型能力反推业务比例；模型只决定能力和成本，比例属于创作场景约束。
 
+## Intent Routing
 
-## MCP 工具
+Use this Skill after the final article draft exists. SEO judgment, title variants, keyword layout, digest writing, and CTR scoring happen inside the Skill. MCP is not used for SEO generation.
 
-| MCP 工具 | 说明 |
-|----------|------|
-| `optimize_seo` (project_id, content, title, keywords?) | SEO 优化分析 |
+## Discovery First
 
----
+Read these local artifacts first:
 
-## 优化流程
+1. `$DIR/04-article-final.md` if present; otherwise `$DIR/03-article.md`.
+2. `$DIR/context-brief.md` and `$DIR/01-research.md` for user intent, positioning, chosen topic, and historical differentiation.
+3. `$DIR/02-outline.md` for section logic and SEO seed keywords.
+4. `get_project_profile(project_id, scope="article", task_id?)` only when project keywords, audience, or writer context is missing from local files.
 
-1. **关键词研究** — 核心词 + 长尾词 + 语义词
-2. **标题优化** — 融入关键词，符合公式
-3. **内容布局** — 关键词在5个位置自然分布
-4. **摘要撰写** — 含关键词，类型明确
+## Configuration Boundaries
 
-## 关键词策略
+- SEO changes must not alter factual claims, promised value, compliance boundaries, or article positioning.
+- Keywords are placed naturally; no keyword stuffing, fake recency, or unsupported authority claims.
+- Title/digest must stay consistent with the article body and content-quality report.
+- CTR optimization is subordinate to compliance. Any variant with exaggerated, absolute, deceptive, or welfare-bound wording is rejected.
 
-### 长尾关键词类型
+## Output Contract
 
-- 问题型："如何…"、"怎么…"、"为什么…"
-- 比较型："哪个好…"、"…的区别"、"…推荐"
-- 时间型："[今年]…"、"最新…"、"本月…"
-- 地域型（如适用）："北京…"、"国内…"
-
-## 标题优化
-
-- 长度 15-25 字，核心关键词放前半部分
-- 标题公式：
-  - 数字型：「5个技巧让你…」
-  - 问题型：「如何在30天内…」
-  - 对比型：「…和…的区别」
-  - 权威型：「专家告诉你…」
-
-## 关键词布局
-
-目标密度 2-8%，分布在 5 个关键位置：
-
-1. **标题**：1-2 个核心关键词
-2. **开头段**：前 100 字内出现
-3. **小标题**：每个 h2/h3 包含相关词
-4. **正文**：自然分布，用同义词避免重复
-5. **结尾段**：总结性提及
-
-## 摘要撰写
-
-长度 50-120 字，包含核心关键词。四种类型：
-
-- **概括型**：总结文章核心内容
-- **问题型**：提出读者关心的问题
-- **利益型**：强调读者能获得的价值
-- **数据型**：用具体数据吸引注意
-
-模板：`本文深入解析[关键词]，通过[方法]，帮助你[目标]。`
-
-## 输出格式
-
-SEO 优化结果应输出以下结构：
+Write `$DIR/seo-result.md` with:
 
 ```markdown
 ## SEO 优化方案
 
 ### 关键词
-- **核心关键词**：[词]
-- **长尾关键词**：[词1]、[词2]、[词3]
-- **语义关键词**：[相关词汇]
+- 核心关键词：...
+- 长尾关键词：...
+- 语义关键词：...
 
 ### 标题优化
-- **原标题**：[原标题]
-- **优化标题**：[新标题]
-- **优化理由**：[说明]
+- 原标题：...
+- 最终标题：...
+- 优化理由：...
 
 ### 摘要
-[50-120字，含关键词]
+50-120 字 digest，前半句给利益/悬念/反差，后半句落核心价值与关键词。
+
+### CTR 变体评分
+| 标题 | 公式 | 好奇心 | 情绪 | 数字/具体性 | 合规 | 核心词前置 | 字数 | 总分 | 结论 |
+|---|---|---:|---:|---:|---:|---:|---:|---:|---|
 
 ### 内容建议
-- 关键词密度：[当前] → [建议]
-- [具体优化建议，如某段落缺少关键词]
+- 关键词布局：...
+- 需要回写正文的建议：无 / 列表
 ```
+
+## Optimization Protocol
+
+1. Extract 1-2 core keywords, 3-6 long-tail keywords, and related semantic words.
+2. Check whether the current title, opening, H2s, and ending naturally carry the core topic.
+3. Generate at least 3 title variants with different formulas: number, pain point, contrast, curiosity, benefit, or empathy.
+4. Score each variant from 0-2 on curiosity gap, emotional strength, specificity, compliance, core keyword front-loading, and 22-25 character fit.
+5. Select the highest compliant title. If no compliant variant wins, keep the safest title and explain why.
+6. Write the digest and keyword plan into `$DIR/seo-result.md`.
+
+## Failure Handling
+
+- Missing final article: stop and request the content-writing output.
+- Title conflicts with content-quality report: revise the title/digest, not the report.
+- All CTR variants are risky: keep a conservative keyword title and record rejected risks.
+- Article body needs keyword adjustment: list recommended edits; do not silently rewrite the article body unless the caller explicitly routes back to content-writing.
 
 ## 参考文档
 
 - 平台标题规范：[title-guidelines.md](references/title-guidelines.md)
-
-## 相关工具
-
-- 生成含关键词布局的大纲：调用 `generate_outline` MCP 工具
-- 风格写作（融入 SEO）：调用 `write_article` MCP 工具

@@ -6,7 +6,7 @@
 
 ### 1. 配置项目写作风格
 
-在 Anban Creator 后台打开对应项目，在写作风格字段中描述目标创作者风格、语气、结构偏好和禁用表达。调用 `write_article` 时，服务端会根据项目配置自动应用该风格。
+在 Anban Creator 后台打开对应项目，在写作风格字段中描述目标创作者风格、语气、结构偏好和禁用表达。运行文章流程时，content-writing Skill 会读取项目配置并应用该风格。
 
 ### 2. 基础结构
 
@@ -19,9 +19,9 @@
 
 ### 3. 使用新风格
 
-项目保存后，通过 MCP 工具立即可用：
+项目保存后，通过项目配置和 content-writing Skill 可用：
 
-- 调用 `write_article`，传入对应 `project_id`
+- 运行文章流程时传入对应 `project_id`，content-writing Skill 会读取项目 writer 配置
 - 自然语言："用这个项目的风格写一篇文章"
 
 ---
@@ -88,12 +88,12 @@ writing_prompt: |
 A: 检查以下几点：
 
 1. 项目是否已保存新的写作风格
-2. `write_article` 是否传入了正确的 `project_id`
+2. 文章流程是否使用了正确的 `project_id`
 3. 项目定位、关键词和风格描述是否互相冲突
 
 ### Q: 如何测试新风格？
 
-A: 调用 `write_article` MCP 工具，传入项目和测试主题即可测试。
+A: 用该项目创建一篇测试文章，检查 `$DIR/03-article.md` 是否体现目标风格。
 
 ### Q: 可以分享我的风格吗？
 
