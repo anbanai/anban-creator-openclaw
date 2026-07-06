@@ -69,6 +69,7 @@ user-invocable: false
 - **文字约束**：仅 2-8 个中文字或 1 个短标签；必须大而清晰，位于安全区内，避开底部 20%；禁止乱码、伪文字、水印、logo、密集排版、长段落。
 - **prompt 要求**：带字时明确写出需要出现的精确文字；无字时写明 `NO text, NO watermark, NO logo`。
 - **vision 校验**：必须检查文字是否短、清晰、准确、无乱码；文字失败时优先改为无字封面或重试。
+- **反导流视觉禁区**：封面不得出现二维码、联系方式、外链 URL、扫码提示、跳转图标、加群、加微信、关注领资料或回复关键词等导流元素；出现即判定不通过并重试。
 ## 第一步：推导视觉概念（杜绝通用素材）
 
 封面**必须从文章内容推导**，不是随机图：
@@ -117,7 +118,7 @@ NO logo.
   "text_policy_ok": true/false,          // 文字策略是否正确：需要文字时短且清晰；不需要时无字；无乱码/伪文字
   "hard_no_watermark_logo": true/false,  // 硬性：无水印/logo/密集排版
   "hard_aspect_ok": true/false,            // 硬性：宽银幕横版（非竖图/方图错比）
-  "missing_or_forbidden": "...",           // 缺失实体或违禁元素（文字水印等）
+  "missing_or_forbidden": "...",           // 缺失实体或违禁元素（文字水印、二维码、联系方式、外链 URL、扫码提示、加群、加微信等）
   "overall_pass": true/false,              // text_policy_ok=true、所有 hard_* 为 true 且 4 个软维度≥medium 才 true
   "sharper_prompt_hint": "..."             // 不通过时的锐化建议
 }

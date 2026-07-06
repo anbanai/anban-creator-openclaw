@@ -72,11 +72,11 @@ user-invocable: true
 检查环境变量 `ANBAN_DEFAULT_PROJECT`，若非空则直接使用其值作为 `$PROJECT_ID`，跳到下一步。若为空，调用 MCP 工具：
 - `list_projects(platform="seednote")` → 获取项目列表。如果只有一个匹配项目，记为 `$PROJECT_ID`。**如果有多个匹配项目**：根据用户的话题/需求与每个项目的 `name`、`positioning`、`keywords` 进行语义匹配；如果能明确判断最匹配的项目则使用该项目的 `project_id`；如果无法明确判断，**必须向用户展示所有可选项目**（列出项目名称和定位），让用户选择后继续
 - `get_project_profile(project_id="$PROJECT_ID", scope="seednote", task_id="$TASK_ID")` → 获取账号定位、关键词等信息。`task_id` 让服务端用任务派生的模板风格覆盖 project 默认风格（`visual_style_source="task"`），不传则只拿到 project 级风格。
-- `list_project_topics(project_id="$PROJECT_ID")` → 查看系统内已有选题，后续选题避开
+- `list_project_titles(project_id="$PROJECT_ID")` → 查看系统内已有标题，后续标题避开
 
 ### 步骤 2：选题研究
 
-using the seednote-research skill 采集热门笔记数据，自动选 Top 1 选题，评分结果与选题理由写入 `$DIR/topic-analysis.md`
+using the seednote-research skill 通过 Agent-Reach（`agent-reach doctor --json`）采集真实热门笔记数据，自动选 Top 1 选题，评分结果与选题理由写入 `$DIR/topic-analysis.md`
 
 ### 步骤 3：创建工作目录
 
@@ -112,7 +112,7 @@ using the seednote-writing skill 扫描标题与正文，生成 `$DIR/compliance
 
 ### 步骤 2：获取源笔记
 
-using the seednote-research skill 先获取 xsec_token，再调用 MCP `get_feed_detail(feed_id="<ID>", xsec_token="<token>")` 获取笔记详情
+using the seednote-research skill 通过 Agent-Reach 获取源笔记详情、互动数据和评论数据，写入 `$DIR/source-note.md`
 
 ### 步骤 3：分析源笔记模板
 
@@ -168,7 +168,7 @@ using the seednote-writing skill 扫描标题与正文，生成 `$DIR/compliance
 | **参考图配置无效** | 自动降级为动态设计风格，首图确立风格基准 |
 | **单张图片生成失败** | 重试一次（更换随机种子），仍失败则跳过该图继续，在最终报告中标注 |
 | **封面生成失败** | 重试两次（不同 prompt 措辞），仍失败则请求用户协助 |
-| **源笔记获取失败** | 检查 xsec_token 有效性，重新获取 token 后重试 |
+| **源笔记获取失败** | 按 Agent-Reach 对应 backend 的重试链重试一次，仍失败则停止并报告 |
 | **视觉结构模板提取失败** | 自动降级为 `medium` 模式，按常规流程规划图片 |
 | **违禁词检测误报** | 记录疑似词，人工复核标记，不自动删除 |
 | **归档目录已存在** | 自动追加序号（如 `标题-2/`），确保目录唯一 |
