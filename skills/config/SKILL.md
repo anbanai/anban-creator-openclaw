@@ -1,6 +1,6 @@
 ---
 name: config
-description: Initializes, views, and modifies anban-creator configuration settings. Use when user wants to initialize, view, or modify anban-creator configuration.
+description: 'Use when user wants to initialize, view, or modify anban-creator configuration. Initializes, views, and modifies anban-creator configuration settings.'
 user-invocable: true
 ---
 
