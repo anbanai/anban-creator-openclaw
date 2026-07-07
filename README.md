@@ -147,6 +147,14 @@ npm run lint     # 类型检查
 └── tsconfig.json
 ```
 
+## Skill 上游来源与批量更新索引
+
+Anban skills 的 canonical 来源/copy 对照表维护在
+[`../claudecode/README.md`](../claudecode/README.md#skill-上游来源与批量更新索引)。批量更新 OpenClaw skills 前先读取该表：它记录哪些
+skill 直接内置或改编了开源 skill，哪些只参考结构，哪些是 Anban 原创业务 workflow。同名 skill 同时存在于
+`claudecode/skills`、`codex/skills`、`openclaw/skills` 时，默认三处分发同步更新，除非测试明确记录发行差异。在 monorepo 内还要用
+`../docs/claude/` 的 Claude Skills 维护清单检查 skill 或 agent 改动后再发布。
+
 ## 其他版本
 
 - [Claude Code 插件](https://github.com/anbanai/anban-creator-claudecode) — Claude Code Agent+Skill+MCP 插件版本

@@ -69,6 +69,8 @@ function summarizeArchive(
       return summarizeArticleDelivery(input, output, archivePath);
     case "seednote":
       return summarizeSeednoteDelivery(input, output, archivePath);
+    case "moments":
+      return summarizeMomentsDelivery(input, output, archivePath);
     case "ecommerce":
       return summarizeEcommerceDelivery(input, output, archivePath);
     default:
@@ -334,6 +336,57 @@ function summarizeSeednoteDelivery(
   return lines.join("\n");
 }
 
+function summarizeMomentsDelivery(
+  input: Record<string, any>,
+  output: any,
+  archivePath: string
+): string {
+  const requiredArtifacts = [
+    "material-analysis.md",
+    "content.md",
+    "quality-review.md",
+  ];
+  const missingArtifacts = requiredArtifacts.filter(
+    (name) => !hasFile(archivePath, name)
+  );
+  const socialCardCount = countMomentsImages(archivePath);
+
+  const warningBlock =
+    missingArtifacts.length > 0
+      ? [
+        ``,
+        `[GATE-WARN] 朋友圈素材包产物缺失（OpenClaw 无法 block，请人工确认）：`,
+        ...missingArtifacts.map((m) => `  - 缺失 ${m}`),
+        ``,
+        `这些产物缺失通常意味着 moments skill 流程未完整执行，`,
+        `建议回到素材分析、正文生成或质量复盘步骤补齐。`,
+        ``,
+      ]
+      : [];
+
+  const lines = [
+    `**朋友圈素材包创作完成**`,
+    `- 归档路径：${archivePath}`,
+    ``,
+    `请检查以下产出文件：`,
+    "- `material-analysis.md` — 素材分类、四层提炼、证据清单和不得编造项",
+    "- `content.md` — 主版本、备选开头/结尾和发布建议",
+    "- `quality-review.md` — 真实感、诱导互动、空泛营销、证据不足、隐私与合规",
+    socialCardCount > 0
+      ? `- 社交卡片 PNG：${socialCardCount} 张（确认已通过 register_rendered_image 登记）`
+      : "- 社交卡片 PNG：未生成（可选增强）",
+    ``,
+    `质量检查要点：`,
+    `- 不伪造客户案例、成交数据、用户反馈`,
+    `- 不使用转发/集赞/评论领资料等诱导互动`,
+    `- 缺证据时使用弱化表达并记录人工复核点`,
+    `- 如生成图片，摘要或 image-review.md 应包含 task_file_id、download_url、尺寸和复核结论`,
+    ...warningBlock,
+  ];
+
+  return lines.join("\n");
+}
+
 function summarizeEcommerceDelivery(
   input: Record<string, any>,
   output: any,
@@ -426,6 +479,12 @@ function countImages(dir: string): number {
 function countContentImages(dir: string): number {
   if (!existsSync(dir)) return 0;
   return readdirSync(dir).filter((n: string) => /^image_.*\.png$/i.test(n))
+    .length;
+}
+
+function countMomentsImages(dir: string): number {
+  if (!existsSync(dir)) return 0;
+  return readdirSync(dir).filter((n: string) => /\.(png|jpg|jpeg|webp)$/i.test(n))
     .length;
 }
 
