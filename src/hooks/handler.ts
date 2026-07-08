@@ -349,8 +349,6 @@ function summarizeMomentsDelivery(
   const missingArtifacts = requiredArtifacts.filter(
     (name) => !hasFile(archivePath, name)
   );
-  const socialCardCount = countMomentsImages(archivePath);
-
   const warningBlock =
     missingArtifacts.length > 0
       ? [
@@ -372,15 +370,11 @@ function summarizeMomentsDelivery(
     "- `material-analysis.md` — 素材分类、四层提炼、证据清单和不得编造项",
     "- `content.md` — 主版本、备选开头/结尾和发布建议",
     "- `quality-review.md` — 真实感、诱导互动、空泛营销、证据不足、隐私与合规",
-    socialCardCount > 0
-      ? `- 社交卡片 PNG：${socialCardCount} 张（确认已通过 register_rendered_image 登记）`
-      : "- 社交卡片 PNG：未生成（可选增强）",
     ``,
     `质量检查要点：`,
     `- 不伪造客户案例、成交数据、用户反馈`,
     `- 不使用转发/集赞/评论领资料等诱导互动`,
     `- 缺证据时使用弱化表达并记录人工复核点`,
-    `- 如生成图片，摘要或 image-review.md 应包含 task_file_id、download_url、尺寸和复核结论`,
     ...warningBlock,
   ];
 
@@ -479,12 +473,6 @@ function countImages(dir: string): number {
 function countContentImages(dir: string): number {
   if (!existsSync(dir)) return 0;
   return readdirSync(dir).filter((n: string) => /^image_.*\.png$/i.test(n))
-    .length;
-}
-
-function countMomentsImages(dir: string): number {
-  if (!existsSync(dir)) return 0;
-  return readdirSync(dir).filter((n: string) => /\.(png|jpg|jpeg|webp)$/i.test(n))
     .length;
 }
 
