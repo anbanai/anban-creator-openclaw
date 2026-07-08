@@ -1,8 +1,8 @@
 {
   "id": "anban",
   "name": "Anban 智能创作助手",
-  "description": "Anban Creator plugin for WeChat, Seednote, video, ecommerce, and agent-assisted publishing workflows",
-  "version": "2.7.32",
+  "description": "Anban Creator plugin for WeChat, Seednote, videocreator, videoeditor, ecommerce, and agent-assisted publishing workflows",
+  "version": "2.7.34",
   "enabledByDefault": true,
   "configSchema": {
     "type": "object",
