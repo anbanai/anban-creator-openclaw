@@ -256,6 +256,22 @@ function readTextFile(dir: string, name: string): string | null {
   }
 }
 
+function readJsonObject(
+  dir: string,
+  name: string
+): Record<string, any> | null {
+  const text = readTextFile(dir, name);
+  if (text === null) return null;
+  try {
+    const parsed = JSON.parse(text);
+    return parsed && typeof parsed === "object" && !Array.isArray(parsed)
+      ? parsed as Record<string, any>
+      : null;
+  } catch {
+    return null;
+  }
+}
+
 function summarizeSeednoteDelivery(
   input: Record<string, any>,
   output: any,
@@ -265,9 +281,15 @@ function summarizeSeednoteDelivery(
   // so we can only warn. This mirrors the claudecode/hooks/seednote-quality-gate.sh checks
   // but as a soft warning rather than a hard block.
   const requiredArtifacts = [
+    "content.md",
+    "request-analysis.json",
+    "request-analysis.md",
+    "reference-analysis.json",
+    "reference-analysis.md",
     "image-plan.md",
     "image-prompts.md",
     "image-review.md",
+    "reference-usage-summary.json",
   ];
   const missingArtifacts = requiredArtifacts.filter(
     (name) => !hasFile(archivePath, name)
@@ -298,6 +320,25 @@ function summarizeSeednoteDelivery(
     }
   }
 
+  const summary = readJsonObject(archivePath, "reference-usage-summary.json");
+  if (summary !== null) {
+    const outputs = summary.outputs;
+    if (!Array.isArray(outputs) || outputs.length === 0) {
+      missingArtifacts.push(
+        `reference-usage-summary.json.outputs 为空，未记录逐图核验结果`
+      );
+    } else {
+      for (const entry of outputs) {
+        if (entry?.verification?.passed !== true) {
+          const fileName = entry?.file_name ?? "<unknown>";
+          missingArtifacts.push(
+            `${fileName} 视觉核验未通过（verification.passed !== true）`
+          );
+        }
+      }
+    }
+  }
+
   const warningBlock =
     missingArtifacts.length > 0
       ? [
@@ -305,8 +346,8 @@ function summarizeSeednoteDelivery(
         `[GATE-WARN] 机械闸门警告（OpenClaw 无法 block，请人工确认）：`,
         ...missingArtifacts.map((m) => `  - 缺失 ${m}`),
         ``,
-        `这些产物缺失通常意味着 seednote-visual-design skill 流程被绕过，`,
-        `图片可能没有按规范生成中文文字。建议人工检查后重跑。`,
+        `这些问题通常意味着 seednote-visual-design skill 的规划、`,
+        `generate_image 原子视觉核验或归档流程未完成。建议人工检查后重跑。`,
         ``,
       ]
       : [];
