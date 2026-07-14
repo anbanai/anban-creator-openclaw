@@ -159,7 +159,7 @@ reference-usage-summary.json
 
 ### 步骤 2：选题研究
 
-using the seednote-research skill 通过 Agent-Reach（`agent-reach doctor --json`）采集真实热门笔记数据，自动选 Top 1 选题，评分结果与选题理由写入 `$DIR/topic-analysis.md`
+using the seednote-research skill；Agent-Reach 健康时采集真实热门笔记数据，不可用时基于用户主题、选题池、账号画像和已有标题继续。自动选 Top 1，把外部评分或降级依据写入 `$DIR/topic-analysis.md`。原创模式不得因 Agent-Reach 不可用写 `failure-state.json`，也不得把降级判断描述成外部热门数据。
 
 ### 步骤 3：创建工作目录
 
@@ -195,7 +195,7 @@ using the seednote-writing skill 扫描标题与正文，生成 `$DIR/compliance
 
 ### 步骤 2：获取源笔记
 
-using the seednote-research skill 通过 Agent-Reach 获取源笔记详情、互动数据和评论数据，写入 `$DIR/source-note.md`
+using the seednote-research skill 通过 Agent-Reach 获取源笔记详情、互动数据和评论数据，写入 `$DIR/source-note.md`；仅有外部 ID/链接且仍无法取得源内容时写结构化失败态并停止
 
 ### 步骤 3：分析源笔记模板
 
