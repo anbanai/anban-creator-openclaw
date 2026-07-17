@@ -71,10 +71,10 @@ user-invocable: true
 
 ## MCP 工具使用规则
 
-- **必须使用 MCP 工具调用服务端接口**（如 `list_projects`、`get_project_profile`、`generate_image`、`analyze_image`、`prepare_workspace`、`archive_workspace`、`update_task_progress`、`submit_agent_feedback` 等）
+- **必须使用 MCP 工具调用服务端接口**（如 `list_projects`、`get_project_profile`、`generate_image`、`analyze_image`、`prepare_workspace`、`update_task_progress`、`submit_agent_feedback` 等）
 - **禁止编写 JavaScript/Node.js/Python 脚本或创建自定义 HTTP 客户端来调用 MCP 接口**
 - **如果 MCP 工具不可用或调用失败，立即停止并报告错误**，不要尝试自行发现、探测或创建替代连接方式
-- **`prepare_workspace` / `archive_workspace` 仅返回路径，目录创建和文件移动由 agent 本地执行**
+- **`prepare_workspace(content_type="ecommerce", task_id=$TASK_ID)` 是唯一工作目录工具**，返回 `$DIR` 后由 agent 本地创建目录。所有产物始终保留在 `$DIR`；任务完成前不得移动、复制或按产品名重命名成果目录。`task_files`、`execution_id` 与 OSS 持久化由服务端维护各自的登记、执行和版本边界。
 - **`generate_image` 按需选参考图**：查「产品图清单」subject，每张电商图只传它描绘部位的相关产品图——OpenAI/Gemini 用 `ref_image_paths`（≤16）传相关子集；火山 Seedream 仅 `ref_image_path` 单张（最相关一张）。**每张电商图必带相关产品 ref**，搭配点名保真 prompt
 - **`analyze_image` 一次一张**，传 `file_path`（server-local，≤10MB）或 `image_url`（HTTPS）二选一；产品图超 10MB 先 `compress_image`
 
@@ -95,7 +95,7 @@ user-invocable: true
 
 调用 `get_project_profile(project_id="$PROJECT_ID", scope="ecommerce", task_id="$TASK_ID")` 获取品牌定位、受众、关键词、参考图/风格描述、**已解析的 `image_model{provider,model,key}`** 与 `consistency_audit:true`。**`task_id` 必传**：服务端用任务派生的模板风格覆盖 project 默认风格（`visual_style_source="task"`），`image_model` 也由 `task.ImageModelKey` 解析。
 
-**产品图发现 → `$PRODUCT_PHOTOS`**：服务端把上传的产品图下载到 `$DIR/.anban-creator/products/`（=`get_project_profile` 的 `ecommerce.product_photo_dir`），并写 `index.json`（JSON 数组，元素为 `product_NN.<ext>`）；读 `index.json` 拼路径得到 `$PRODUCT_PHOTOS`（用于 `analyze_image` 与参考图），期望数见 `product_photo_count`。其余任务输入：`selected_modules`、`target_platform`、`selling_points`（可选）、`visual_style`、语言。**`index.json` 缺失或产品图全无可访问 → 停止并请求用户上传产品图。** 逐张验证可访问；任一不可访问记录并降级（剔除后继续，至少保留 1 张）。
+**产品图发现 → `$PRODUCT_PHOTOS`**：将 `ecommerce.product_photo_dir` 读取为 `$PRODUCT_PHOTO_DIR`；相对路径以当前任务 CWD 为根解析，不得拼接 `$DIR`。服务端把上传产品图下载到该目录并写 `$PRODUCT_PHOTO_DIR/index.json`（JSON 数组，元素为 `product_NN.<ext>`）；读取 `index.json`，把每个文件名拼成 `$PRODUCT_PHOTO_DIR/<filename>` 得到 `$PRODUCT_PHOTOS`（用于 `analyze_image` 与参考图），期望数见 `product_photo_count`。其余任务输入：`selected_modules`、`target_platform`、`selling_points`（可选）、`visual_style`、语言。**`index.json` 缺失或全无可访问 → 停止并请求用户上传产品图。** 逐张验证可访问；任一不可访问记录并降级（剔除后继续，至少保留 1 张）。
 
 ### 步骤 2：创建工作目录
 
@@ -122,15 +122,15 @@ user-invocable: true
 
 调用 `update_task_progress(task_id="$TASK_ID", stage="compliance", title="合规检查", description="广告法极限词与平台违禁词扫描")`。using the `ecommerce-platform-specs` skill：按 `target_platform` 扫描所有图内文字与文案的《广告法》极限词与平台违禁词，生成 `$DIR/compliance-report.md`。高风险词必须删除或改写并重生成相关图；疑似误报只记录标注人工复核。
 
-### 步骤 7：归档工作目录
+### 步骤 7：交付校验
 
-调用 `update_task_progress(task_id="$TASK_ID", stage="archive", title="归档", description="归档到最终路径")`。确认产品名 `$PRODUCT_NAME`（从产品档案品名/包装文字提取，不得用内部产物名）。调用 `archive_workspace(content_type="ecommerce", name="$PRODUCT_NAME")` 获取归档路径 `$ARCHIVE_DIR`，然后通过 Bash 执行 `mkdir -p "$ARCHIVE_DIR" && mv "$DIR"/* "$ARCHIVE_DIR/" 2>/dev/null`。归档目录已存在则追加序号。
+调用 `update_task_progress(task_id="$TASK_ID", stage="delivery_validation", title="交付校验", description="校验任务成果目录中的最终产物")`。确认产品档案、文案、资产规划、图片核验记录、合规报告与所有已选模块图片直接位于 `$DIR`，未选模块无产物，计划数量与实际文件一致。所有产物始终保留在 `$DIR`，不得移动、复制或按产品名重命名成果目录。
 
 ### 步骤 8：生成 manifest 与最终报告
 
-生成 `$DIR/manifest.json`（归档后在 `$ARCHIVE_DIR/manifest.json`）：按模块列出每张图的文件名、尺寸、用途、provider、视觉自检结果（PASS/FAIL/needs_reference）、合规状态。
+生成 `$DIR/manifest.json`：按模块列出每张图的文件名、尺寸、用途、provider、视觉自检结果（PASS/FAIL/needs_reference）、合规状态，并确认清单中的文件都直接存在于 `$DIR`。
 
-向用户交付结果摘要：产品名、目标平台、已选模块与各模块产出张数、成果目录 `$ARCHIVE_DIR`、产品档案/卖点文案路径、视觉自检通过率与 `needs_reference` 项、合规状态、失败或降级项。进度报告格式：`[N/M] description → $DIR/ (detail)`。
+向用户交付结果摘要：产品名、目标平台、已选模块与各模块产出张数、成果目录 `$DIR`、产品档案/卖点文案路径、视觉自检通过率与 `needs_reference` 项、合规状态、失败或降级项。进度报告格式：`[N/M] description → $DIR/ (detail)`。
 
 最后调用 `submit_agent_feedback(task_id="$TASK_ID", agent_name="ecommerce", scores={quality, completeness, efficiency}, errors, optimizations, summary)`，summary 必须包含目标平台、已选模块与视觉自检通过率。
 
@@ -174,7 +174,7 @@ user-invocable: true
 | **主图①生成失败** | 重试两次仍失败则请求用户协助 |
 | **极限词/违禁词** | `ecommerce-platform-specs` 扫描，高风险必改写重生成 |
 | **图像模型保真不足（如 Seedream 单参考）** | 模型由用户建任务时选定；多参考保真首选 `openai-gpt-image`（gpt-image-2），Seedream 单参考按需传最相关一张 + 点名保真 + 视觉自检收敛 |
-| **归档目录已存在** | 自动追加序号，确保不覆盖已有成果 |
+| **交付校验失败** | 保留 `$DIR` 全部产物并从对应阶段恢复 |
 
 ---
 
@@ -190,7 +190,7 @@ user-invocable: true
 - [ ] 图内卖点文字清晰、信息层级正确、移动端首屏可读
 - [ ] 合规报告生成，无未处理高风险词
 - [ ] `manifest.json` 生成，含 provider 与自检结果
-- [ ] 归档成功，最终目录路径报告给用户
+- [ ] 交付校验通过，`$DIR` 成果目录路径报告给用户
 
 ---
 
@@ -206,7 +206,7 @@ user-invocable: true
 
 ### 文件组织
 
-- 当前运行使用任务工作目录 `$DIR`，完成后按产品名归档为 `output/ecommerce/{产品名}/`
+- 当前运行和最终交付都使用任务成果目录 `$DIR`，不得另建产品名目录
 - 图片命名：`main_01.png`..`main_05.png`（主图）、`detail_01.png`..`detail_NN.png`（详情）、`cover_01.png`..`cover_NN.png`（封面banner）、`share_01.png`..`share_NN.png`（分享）、`sku_<variant>.png`（SKU）
 - 产品档案：`$DIR/product-bible.md`；卖点文案：`$DIR/copywriting.md`；资产规划：`$DIR/asset-plan.md`；Prompt 备份：`$DIR/image-prompts.md`；最佳参考：`$DIR/best-refs.md`；合规报告：`$DIR/compliance-report.md`；资产清单：`$DIR/manifest.json`
 
@@ -214,7 +214,7 @@ user-invocable: true
 
 - 流程启动时用 `TaskCreate` 创建任务列表，每个任务对应一个流程步骤，设置依赖（每个任务 blockedBy 前一个）
 - 开始前：`TaskUpdate status → in_progress`；完成后：`TaskUpdate status → completed`
-- 报告进度示例：`[5/8] 详情页生成完成 → $DIR/ (8节，自检通过率 90%)`
+- 报告进度示例：`[N/M] 详情页生成完成 → $DIR/ (8节，自检通过率 90%)`
 
 ## 执行原则
 

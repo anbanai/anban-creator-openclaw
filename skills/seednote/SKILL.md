@@ -115,7 +115,7 @@ reference-usage-summary.json
 
 停止时写入 `failure-state.json`：`{"version":"1.0","status":"recoverable_failure","stage":"<stage>","error_code":"<stable_code>","message":"<原始错误摘要>","resume_from":"<stage>"}`。该文件表示任务未成功，供完成校验使用。
 
-恢复运行时必须保留旧的 `failure-state.json`，直到 `resume_from` 指向的阶段已成功重做、全部完成条件已满足且即将归档；此时删除旧失败态再调用 `archive_workspace`。不得在恢复开始时提前删除，也不得让已解决的失败态进入成功归档。
+恢复运行时必须保留旧的 `failure-state.json`，直到 `resume_from` 指向的阶段已成功重做且全部交付校验满足；仅在即将报告成功前删除旧失败态。不得在恢复开始时提前删除，也不得交付仍带失败态的结果。
 
 ---
 
@@ -137,10 +137,16 @@ reference-usage-summary.json
 
 ## MCP 工具使用规则
 
-- **必须使用 MCP 工具调用服务端接口**（如 `list_projects`、`generate_image` 等）
+- **必须使用 MCP 工具调用服务端接口**（如 `list_projects`、`prepare_workspace`、`finalize_task_title`、`generate_image`、`save_template`、`submit_agent_feedback` 等）
 - **禁止编写 JavaScript/Node.js/Python 脚本或创建自定义 HTTP 客户端来调用 MCP 接口**
 - **如果 MCP 工具不可用或调用失败，立即停止并报告错误**，不要尝试自行发现、探测或创建替代连接方式
-- **`prepare_workspace` / `archive_workspace` 仅返回路径，目录创建和文件移动由 agent 本地执行**
+- **`prepare_workspace(content_type="seednote", task_id=$TASK_ID)` 是唯一工作目录工具**，返回 `$DIR` 后由 agent 本地创建目录。所有产物始终保留在 `$DIR`；任务完成前不得移动、复制或按标题重命名成果目录。`task_files`、`execution_id` 与 OSS 持久化由服务端维护各自的登记、执行和版本边界。
+
+---
+
+## 共享任务工作目录（所有模式先执行）
+
+先解析 `$TASK_ID`：检查 CWD 下是否存在 `.task-context` 文件，从中读取 `TASK_ID=xxx`；否则使用 CWD 目录名。随后调用 `prepare_workspace(content_type="seednote", task_id="$TASK_ID")` 获取 `$DIR`，通过 Bash 执行 `mkdir -p "$DIR"`。此共享步骤必须在原创或复刻模式的任何研究、分析和文件写入前完成，全程复用同一 `$TASK_ID` 与 `$DIR`。
 
 ---
 
@@ -149,8 +155,6 @@ reference-usage-summary.json
 按顺序执行以下步骤。每一步都必须调用对应的工具，不能跳过。
 
 ### 步骤 1：获取账号信息
-
-**先解析 `$TASK_ID`**：检查 CWD 下是否存在 `.task-context` 文件，从中读取 `TASK_ID=xxx`；否则使用 CWD 目录名作为 `$TASK_ID`。后续所有需要 task_id 的 MCP 工具调用都复用此值。
 
 检查环境变量 `ANBAN_DEFAULT_PROJECT`，若非空则直接使用其值作为 `$PROJECT_ID`，跳到下一步。若为空，调用 MCP 工具：
 - `list_projects(platform="seednote")` → 获取项目列表。如果只有一个匹配项目，记为 `$PROJECT_ID`；如果有多个匹配项目，根据用户需求与项目 `name`、`positioning`、`keywords` 计算相关性，并按“相关性降序、`project_id` 升序”稳定排序后自动选择第一名，把候选和依据写入 `request-analysis.md`，不得询问用户
@@ -161,33 +165,31 @@ reference-usage-summary.json
 
 using the seednote-research skill；Agent-Reach 健康时采集真实热门笔记数据，不可用时基于用户主题、选题池、账号画像和已有标题继续。自动选 Top 1，把外部评分或降级依据写入 `$DIR/topic-analysis.md`。原创模式不得因 Agent-Reach 不可用写 `failure-state.json`，也不得把降级判断描述成外部热门数据。
 
-### 步骤 3：创建工作目录
-
-调用 `prepare_workspace(content_type="seednote", task_id="$TASK_ID")` MCP 工具获取工作目录路径，变量记为 `$DIR`，然后通过 Bash 执行 `mkdir -p "$DIR"` 创建目录。
-
-### 步骤 4：创作内容
+### 步骤 3：创作内容
 
 using the seednote-writing skill 生成标题、正文和话题标签，内容保存到 `$DIR/content.md`
 
-### 步骤 5：图片生成
+### 步骤 3b：标题终稿锁定
+
+在任何图片规划或生成前，从 `$DIR/content.md` 第一行读取 `$FINAL_TITLE` 并调用 `finalize_task_title(task_id=$TASK_ID, title=$FINAL_TITLE)`，最多尝试 3 次。重复标题先更新 `content.md` 第一行并重跑 humanizer 与标题合规，再重试。非重复错误或连续 3 次重复时写入 `$DIR/failure-state.json`：`{"version":"1.0","status":"recoverable_failure","stage":"title_finalization","error_code":"<stable_code>","message":"<原始错误摘要>","resume_from":"title_finalization"}`；非重复错误使用 `error_code="finalize_title_failed"`，重复耗尽使用 `error_code="duplicate_title_exhausted"`，随后停止。成功后以服务端接受标题锁定 `$FINAL_TITLE`，后续视觉、合规、交付校验和最终报告不得静默改名。
+
+### 步骤 4：图片生成
 
 using the seednote-visual-design skill，传入 `$DIR/content.md`，技能内部按 `seednote_image_mode` 完成内容蒸馏、视觉策略、Prompt 蓝图、图片内容规划（`$DIR/image-plan.md`）和全部图片生成。每张图都通过带 `verify_with_vision=true` 和动态 `verification_prompt` 的 `generate_image` 原子生成、登记与核验，并写入 `$DIR/image-prompts.md` 和 `$DIR/image-review.md`。生成后检查每张图片；API 或核验依赖失败时写 `failure-state.json` 并停止。
 
-### 步骤 6：违禁词合规检查
+### 步骤 5：违禁词合规检查
 
 using the seednote-writing skill 扫描标题与正文，生成 `$DIR/compliance-report.md`
 
-### 步骤 7：归档工作目录
+### 步骤 6：交付校验
 
-从 `$DIR/content.md` 提取最终标题，调用 `archive_workspace(content_type="seednote", name="{标题}")` 获取归档路径 `$ARCHIVE_DIR`，然后通过 Bash 执行 `mkdir -p "$ARCHIVE_DIR" && mv "$DIR"/* "$ARCHIVE_DIR/" 2>/dev/null` 移动文件。归档后向用户报告成果目录路径。
+再次确认 `$DIR/content.md` 第一行等于服务端接受的 `$FINAL_TITLE`，再逐项校验图片规划、图片核验记录、合规报告和计划中的全部图片都直接位于 `$DIR`，每张图的 `verification.passed=true`。所有产物始终保留在 `$DIR`，不得移动、复制或按标题重命名成果目录。恢复执行仅在所有交付校验通过后、即将报告成功前删除已解决的 `$DIR/failure-state.json`。
 
 ---
 
 ## 复刻模式流程（用户提供笔记 ID 或链接时）
 
 ### 步骤 1：获取账号信息
-
-**先解析 `$TASK_ID`**（若尚未解析）：检查 CWD 下是否存在 `.task-context` 文件，从中读取 `TASK_ID=xxx`；否则使用 CWD 目录名作为 `$TASK_ID`。
 
 检查环境变量 `ANBAN_DEFAULT_PROJECT`，若非空则直接使用其值作为 `$PROJECT_ID`，跳到步骤 2。若为空，调用 MCP 工具：
 - `list_projects(platform="seednote")` → 获取项目列表。如果只有一个匹配项目，记为 `$PROJECT_ID`；如果有多个匹配项目，根据用户需求与项目 `name`、`positioning`、`keywords` 计算相关性，并按“相关性降序、`project_id` 升序”稳定排序后自动选择第一名，把候选和依据写入 `request-analysis.md`，不得询问用户
@@ -201,25 +203,35 @@ using the seednote-research skill 通过 Agent-Reach 获取源笔记详情、互
 
 using the seednote-writing skill 分析源笔记，结果写入 `$DIR/source-analysis.md`。额外提取**视觉结构模板**：图片总张数（含封面）、各内容页主题关键词；若无法提取，记录"视觉结构：无法提取"，`tight` 模式图片规划自动降级为 `medium`
 
-### 步骤 4：创建工作目录
-
-调用 `prepare_workspace(content_type="seednote", task_id="$TASK_ID")` MCP 工具获取工作目录路径，变量记为 `$DIR`，然后通过 Bash 执行 `mkdir -p "$DIR"` 创建目录。
-
-### 步骤 5：按改写模式生成内容
+### 步骤 4：按改写模式生成内容
 
 using the seednote-writing skill 根据用户指定或默认模式改写，内容保存到 `$DIR/content.md`，决策记录到 `$DIR/source-analysis.md`
 
-### 步骤 6：图片生成
+### 步骤 4b：标题终稿锁定
+
+在任何图片规划或生成前，从 `$DIR/content.md` 第一行读取 `$FINAL_TITLE` 并调用 `finalize_task_title(task_id=$TASK_ID, title=$FINAL_TITLE)`，最多尝试 3 次。重复标题先更新 `content.md` 第一行并重跑 humanizer 与标题合规，再重试。非重复错误或连续 3 次重复时写入 `$DIR/failure-state.json`：`{"version":"1.0","status":"recoverable_failure","stage":"title_finalization","error_code":"<stable_code>","message":"<原始错误摘要>","resume_from":"title_finalization"}`；非重复错误使用 `error_code="finalize_title_failed"`，重复耗尽使用 `error_code="duplicate_title_exhausted"`，随后停止。成功后以服务端接受标题锁定 `$FINAL_TITLE`，后续视觉、合规、交付校验和最终报告不得静默改名。
+
+### 步骤 5：图片生成
 
 using the seednote-visual-design skill，传入 `$DIR/content.md`、改写模式和源笔记视觉结构，技能内部自动适配并完成内容蒸馏、视觉策略、Prompt 蓝图、规划、生成记录和质量复盘。每张图通过带服务端视觉核验的 `generate_image` 生成，保存到 `$DIR/`；图片 API 或核验失败时写 `failure-state.json` 并停止。
 
-### 步骤 7：违禁词合规检查
+### 步骤 6：违禁词合规检查
 
 using the seednote-writing skill 扫描标题与正文，生成 `$DIR/compliance-report.md`
 
-### 步骤 8：归档工作目录
+### 步骤 7：交付校验
 
-从 `$DIR/content.md` 提取最终标题，调用 `archive_workspace(content_type="seednote", name="{标题}")` 归档。归档后向用户报告完整的成果目录路径。
+再次确认 `$DIR/content.md` 第一行等于服务端接受的 `$FINAL_TITLE`，再逐项校验图片规划、图片核验记录、合规报告和计划中的全部图片都直接位于 `$DIR`，每张图的 `verification.passed=true`。所有产物始终保留在 `$DIR`，不得移动、复制或按标题重命名成果目录。恢复执行仅在所有交付校验通过后、即将报告成功前删除已解决的 `$DIR/failure-state.json`。
+
+### 步骤 8：模板保存（仅复刻模式）
+
+交付校验完成后检查 `$DIR/viral-template.json` 和 `$DIR/template-meta.json`，仅当 `save_eligible=true` 时从这两个文件读取参数并调用 `save_template(type="seednote", name=template-meta.name, category=template-meta.category, style_prompt=viral-template.cover_template, tags=JSON.stringify(template-meta.tags))`；只使用真实 schema 的 `type`、`name`、`category`、`style_prompt`、`tags`。服务端按持久字段 fingerprint 幂等保存：重复或 resume 调用同一 payload 必须返回同一 template ID，首次状态为 `created`，后续为 `existing`。若 `save_template` 失败，记录 warning 但不阻塞成功交付。
+
+---
+
+## 最终报告
+
+原创或复刻模式完成交付校验后，向用户报告模式、服务端接受的 `$FINAL_TITLE`、成果目录 `$DIR`、图片数量、合规状态和任何降级项。最终报告完成后调用 `submit_agent_feedback(task_id=$TASK_ID, agent_name="seednote", scores={quality, completeness, efficiency}, errors, optimizations, summary)`，反馈必须位于最终报告之后。
 
 ---
 
@@ -254,7 +266,7 @@ using the seednote-writing skill 扫描标题与正文，生成 `$DIR/compliance
 | **源笔记获取失败** | 按 Agent-Reach 对应 backend 的重试链重试一次，仍失败则停止并报告 |
 | **视觉结构模板提取失败** | 自动降级为 `medium` 模式，按常规流程规划图片 |
 | **违禁词检测误报** | 记录疑似词，人工复核标记，不自动删除 |
-| **归档目录已存在** | 自动追加序号（如 `标题-2/`），确保目录唯一 |
+| **交付校验失败** | 保留 `$DIR` 全部产物与失败态，从对应阶段恢复 |
 
 ---
 
@@ -270,7 +282,7 @@ using the seednote-writing skill 扫描标题与正文，生成 `$DIR/compliance
 - [ ] 所有图片视觉风格一致（同色系、同字体、同布局风格）
 - [ ] 复刻模式下 `source-analysis.md` 包含源笔记模板分析
 - [ ] 违禁词检查报告生成
-- [ ] 归档成功，最终目录路径报告给用户
+- [ ] 交付校验通过，`$DIR` 成果目录路径报告给用户
 
 ---
 
@@ -284,7 +296,7 @@ using the seednote-writing skill 扫描标题与正文，生成 `$DIR/compliance
 
 ### 文件组织
 
-- 当前运行使用任务工作目录（变量 `$DIR`），完成后按笔记标题归档为 `output/seednote/{标题}/`
+- 当前运行和最终交付都使用任务成果目录 `$DIR`，不得另建标题目录
 - 图片命名：`$DIR/cover.png`（封面）, `$DIR/image_01.png` ...（仅含内容图的模式）, `$DIR/tail.png`（仅含尾图的模式）
 - 内容草稿：`$DIR/content.md`（含标题/正文/话题标签）
 - 图片规划：`$DIR/image-plan.md`（seednote-visual-design 技能内部产物）
@@ -297,7 +309,7 @@ using the seednote-writing skill 扫描标题与正文，生成 `$DIR/compliance
 - 开始前：`TaskUpdate status → in_progress`
 - 完成后：`TaskUpdate status → completed`
 - 设置依赖：每个任务 blockedBy 前一个任务
-- 报告进度示例：`[4/6] 图片生成完成 → $DIR/ (5张图片)`
+- 报告进度示例：`[N/M] 图片生成完成 → $DIR/ (5张图片)`
 
 ## 执行原则
 
@@ -322,6 +334,6 @@ using the seednote-writing skill 扫描标题与正文，生成 `$DIR/compliance
 - **阶段 1 - 选题与内容**：完成选题分析、标题正文、话题标签（`content.md`）
 - **阶段 2 - 图片规划**：完成图片内容规划（`image-plan.md`）
 - **阶段 3 - 图片生成**：完成封面和所有内容图生成
-- **阶段 4 - 合规与归档**：完成违禁词检查、归档整理
+- **阶段 4 - 合规与交付**：完成违禁词检查、交付校验
 
 每个阶段完成后可独立验证，不依赖后续阶段。
