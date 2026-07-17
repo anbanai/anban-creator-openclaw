@@ -231,7 +231,7 @@ using the seednote-writing skill 扫描标题与正文，生成 `$DIR/compliance
 
 ## 最终报告
 
-原创或复刻模式完成交付校验后，向用户报告模式、服务端接受的 `$FINAL_TITLE`、成果目录 `$DIR`、图片数量、合规状态和任何降级项。最终报告完成后调用 `submit_agent_feedback(task_id=$TASK_ID, agent_name="seednote", scores={quality, completeness, efficiency}, errors, optimizations, summary)`，反馈必须位于最终报告之后。
+原创或复刻模式完成交付校验后，向用户报告模式、服务端接受的 `$FINAL_TITLE`、成果目录 `$DIR`、图片数量、合规状态和任何降级项。最终报告完成后调用 `submit_agent_feedback(task_id=$TASK_ID, agent_name="seednote", scores=JSON.stringify({quality, completeness, efficiency}), errors, optimizations, summary)`，反馈必须位于最终报告之后。
 
 ---
 

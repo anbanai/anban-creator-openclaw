@@ -132,7 +132,7 @@ user-invocable: true
 
 向用户交付结果摘要：产品名、目标平台、已选模块与各模块产出张数、成果目录 `$DIR`、产品档案/卖点文案路径、视觉自检通过率与 `needs_reference` 项、合规状态、失败或降级项。进度报告格式：`[N/M] description → $DIR/ (detail)`。
 
-最后调用 `submit_agent_feedback(task_id="$TASK_ID", agent_name="ecommerce", scores={quality, completeness, efficiency}, errors, optimizations, summary)`，summary 必须包含目标平台、已选模块与视觉自检通过率。
+最后调用 `submit_agent_feedback(task_id="$TASK_ID", agent_name="ecommerce", scores=JSON.stringify({quality, completeness, efficiency}), errors, optimizations, summary)`，summary 必须包含目标平台、已选模块与视觉自检通过率。
 
 ---
 
